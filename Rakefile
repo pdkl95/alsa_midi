@@ -5,15 +5,14 @@ begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
     gem.name = "alsa_midi_looper"
-    gem.summary = %Q{TODO: one-line summary of your gem}
-    gem.description = %Q{TODO: longer description of your gem}
+    gem.summary = %Q{Alsa MIDI-SEQ bindings}
+    gem.description = %Q{Alsa bindings for the MIDI Sequencer, in loop-sequencer format}
     gem.email = "git@thoughtnoise.net"
-    gem.homepage = "http://github.com/pdkl95/alsa_midi_looper"
+    gem.homepage = "http://git.thoughtnoise.net/"
     gem.authors = ["Brent Sanders"]
     gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
-  Jeweler::GemcutterTasks.new
 rescue LoadError
   puts "Jeweler (or a dependency) not available. Install it with: gem install jeweler"
 end
