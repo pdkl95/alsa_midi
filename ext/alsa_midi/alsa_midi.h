@@ -11,7 +11,7 @@
 #include <asoundlib.h>
 
 extern VALUE aMIDI_mod;
-extern VALUE aMIDI_cBase;
+extern VALUE aMIDI_cPort;
 extern VALUE aMIDI_eAlsaError;
 
 struct midi_seq_client {
@@ -20,13 +20,9 @@ struct midi_seq_client {
 
   int ticks_per_quarter;
   int queue_id;
-  int port_out_id;
-  int port_in_id;
   int transpose;
-  int bpm0;
   int bpm;
   int tempo;
-  int swing;
   int seq_len;
 };
 typedef struct midi_seq_client seq_client_t;
@@ -37,5 +33,7 @@ typedef struct midi_seq_client seq_client_t;
 
 VALUE alsa_midi_klass_base();
 VALUE alsa_midi_klass_base_new();
+VALUE alsa_midi_klass_port();
+VALUE alsa_midi_klass_port_new();
 
 #endif /*ALSA_MIDI_H*/

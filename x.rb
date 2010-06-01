@@ -8,3 +8,4 @@ require 'alsa_midi_looper'
 #AlsaMIDI::Base.new
 seq = AlsaMIDI::Seq.new
 seq.tempo = 144
+sleep 20

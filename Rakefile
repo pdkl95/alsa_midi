@@ -4,9 +4,9 @@ require 'rake'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
-    gem.name = "alsa_midi_looper"
-    gem.summary = %Q{Alsa MIDI-SEQ bindings}
-    gem.description = %Q{Alsa bindings for the MIDI Sequencer, in loop-sequencer format}
+    gem.name = "alsa_midi"
+    gem.summary = %Q{ALSA MIDI-SEQ bindings}
+    gem.description = %Q{ALSA bindings for the MIDI Sequencer}
     gem.email = "git@thoughtnoise.net"
     gem.homepage = "http://git.thoughtnoise.net/"
     gem.authors = ["Brent Sanders"]

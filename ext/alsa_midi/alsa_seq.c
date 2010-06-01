@@ -1,4 +1,5 @@
 #include "alsa_midi.h"
+#include "pattern.h"
 #include "alsa_seq.h"
 
 VALUE aMIDI_cSeq;
@@ -57,7 +58,7 @@ static VALUE seq_set_tempo(VALUE self, VALUE new_bpm)
   double tpq = (double)(seq->ticks_per_quarter);
   double bpm = (double)(seq->bpm);
   seq->tempo = (int)(6e7 / (bpm * tpq * tpq));
-  printf("New Tempo: %d bpm, %d ticks\n", seq->bpm, seq->tempo);
+  printf("New Tempo: %d bpm, %d us/tick\n", seq->bpm, seq->tempo);
 
   snd_seq_queue_tempo_set_tempo(queue_tempo, seq->tempo);
   snd_seq_queue_tempo_set_ppq(queue_tempo, seq->ticks_per_quarter);
@@ -65,6 +66,20 @@ static VALUE seq_set_tempo(VALUE self, VALUE new_bpm)
 
   snd_seq_queue_tempo_free(queue_tempo);
   return new_bpm;
+}
+
+static VALUE seq_startup(VALUE self)
+{
+  int npfd;
+  struct pollfd *pfd;
+  SEQ_BASE;
+
+  snd_seq_start_queue(seq->handle, seq->queue_id, NULL);
+  snd_seq_drain_output(seq->handle);
+  npfd = snd_seq_poll_descriptors_count(seq->handle, POLLIN);
+  pfd = (struct pollfd *)alloca(npfd * sizeof(struct pollfd));
+  snd_seq_poll_descriptors(seq->handle, pfd, npfd, POLLIN);
+
 }
 
 static VALUE seq_shutdown(VALUE self)

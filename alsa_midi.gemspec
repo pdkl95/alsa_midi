@@ -4,13 +4,13 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = %q{alsa_midi_looper}
+  s.name = %q{alsa_midi}
   s.version = "0.0.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Brent Sanders"]
   s.date = %q{2010-06-01}
-  s.description = %q{Alsa bindings for the MIDI Sequencer, in loop-sequencer format}
+  s.description = %q{ALSA bindings for the MIDI Sequencer}
   s.email = %q{git@thoughtnoise.net}
   s.extensions = ["ext/extconf.rb", "ext/extconf.rb"]
   s.extra_rdoc_files = [
@@ -24,15 +24,22 @@ Gem::Specification.new do |s|
      "README.rdoc",
      "Rakefile",
      "VERSION",
-     "lib/alsa_midi_looper.rb",
+     "ext/alsa_midi/alsa_midi.c",
+     "ext/alsa_midi/alsa_midi.h",
+     "ext/alsa_midi/alsa_seq.c",
+     "ext/alsa_midi/alsa_seq.h",
+     "ext/alsa_midi/looper.c",
+     "ext/alsa_midi/looper.h",
+     "ext/extconf.rb",
      "test/helper.rb",
-     "test/test_alsa_midi_looper.rb"
+     "test/test_alsa_midi_looper.rb",
+     "x.rb"
   ]
   s.homepage = %q{http://git.thoughtnoise.net/}
   s.rdoc_options = ["--charset=UTF-8"]
   s.require_paths = ["lib"]
-  s.rubygems_version = %q{1.3.6}
-  s.summary = %q{Alsa MIDI-SEQ bindings}
+  s.rubygems_version = %q{1.3.7}
+  s.summary = %q{ALSA MIDI-SEQ bindings}
   s.test_files = [
     "test/helper.rb",
      "test/test_alsa_midi_looper.rb"
@@ -42,7 +49,7 @@ Gem::Specification.new do |s|
     current_version = Gem::Specification::CURRENT_SPECIFICATION_VERSION
     s.specification_version = 3
 
-    if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
+    if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
       s.add_development_dependency(%q<thoughtbot-shoulda>, [">= 0"])
     else
       s.add_dependency(%q<thoughtbot-shoulda>, [">= 0"])

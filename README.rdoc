@@ -1,4 +1,4 @@
-= alsa_midi_looper
+= alsa_midi
 
 Description goes here.
 
