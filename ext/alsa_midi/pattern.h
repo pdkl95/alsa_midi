@@ -12,8 +12,6 @@ struct midi_pattern {
   midi_ev_t events[MAX_EVENTS];
 };
 
-extern VALUE aMIDI_cPattern;
-
-void Init_alsa_midi_pattern();
+void Init_aMIDI_Pattern();
 
 #endif /*PATTERN_H*/

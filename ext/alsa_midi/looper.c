@@ -1,10 +1,8 @@
 #include "alsa_midi.h"
-#include "alsa_seq.h"
+#include "client.h"
 #include "looper.h"
 
-VALUE aMIDI_cLooper;
-
-void Init_alsa_midi_looper()
+void Init_aMIDI_Looper()
 {
-  aMIDI_cLooper = rb_define_class_under(aMIDI_mod, "Looper", rb_cObject);
+
 }

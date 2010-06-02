@@ -1,55 +1,36 @@
 #include "alsa_midi.h"
 #include "pattern.h"
-#include "alsa_seq.h"
+#include "client.h"
 #include "looper.h"
 
-VALUE aMIDI_mod;
-VALUE aMIDI_cBase;
-VALUE aMIDI_cPort;
-VALUE aMIDI_eAlsaError;
+VALUE aMIDI;
+VALUE aMIDI_Pattern;
+VALUE aMIDI_Port;
+VALUE aMIDI_PortTX;
+VALUE aMIDI_PortRX;
+VALUE aMIDI_Client;
+VALUE aMIDI_Looper;
 
-VALUE alsa_midi_klass_base()
-{
-  return rb_const_get(aMIDI_mod, rb_intern("Base"));
-}
-
-VALUE alsa_midi_klass_base_new()
-{
-  return rb_class_new_instance(0, NULL, alsa_midi_klass_base());
-}
-
-VALUE alsa_midi_klass_port()
-{
-  return rb_const_get(aMIDI_mod, rb_intern("Port"));
-}
-
-VALUE alsa_midi_klass_port_new()
-{
-  return rb_class_new_instance(0, NULL, alsa_midi_klass_base());
-}
-
-static void base_free(seq_client_t *seq)
-{
-  free(seq);
-}
-
-static VALUE base_alloc(VALUE klass)
-{
-  seq_client_t *data;
-  VALUE obj = Data_Make_Struct(klass, seq_client_t, NULL, base_free, data);
-  data->ticks_per_quarter = DEFAULT_TICKS_PER_QUARTER;
-  return obj;
-}
+VALUE aMIDI_AlsaError;
+VALUE aMIDI_SeqError;
 
 void Init_alsa_midi()
 {
-  aMIDI            = rb_define_class("AlsaMIDI");
-  aMIDI_cPort      = rb_define_class_under(aMIDI, "Port",      rb_cObject);
-  aMIDI_eAlsaError = rb_define_class_under(aMIDI, "AlsaError", rb_eRuntimeError);
+  aMIDI         = rb_define_module("AlsaMIDI");
+  aMIDI_Pattern = rb_define_class_under(aMIDI,      "Pattern", rb_cObject);
+  aMIDI_Port    = rb_define_class_under(aMIDI,      "Port",    rb_cObject);
+  aMIDI_PortTX  = rb_define_class_under(aMIDI_Port, "TX",      aMIDI_Port);
+  aMIDI_PortRX  = rb_define_class_under(aMIDI_Port, "RX",      aMIDI_Port);
+  aMIDI_Client  = rb_define_class_under(aMIDI,      "Client",  rb_cObject);
+  aMIDI_Looper  = rb_define_class_under(aMIDI,      "Looper",  rb_cObject);
 
-  rb_define_alloc_func(aMIDI_cBase, base_alloc);
+  aMIDI_AlsaError = rb_define_class_under(aMIDI, "AlsaError",
+                                          rb_eRuntimeError);
 
-  Init_alsa_midi_pattern();
-  Init_alsa_midi_seq();
-  Init_alsa_midi_looper();
+  aMIDI_SeqError  = rb_define_class_under(aMIDI, "AlsaSequencerError",
+                                          aMIDI_AlsaError);
+  Init_aMIDI_Pattern();
+  Init_aMIDI_Port();
+  Init_aMIDI_Client();
+  Init_aMIDI_Looper();
 }

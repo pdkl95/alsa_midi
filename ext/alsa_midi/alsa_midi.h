@@ -2,6 +2,7 @@
 #define ALSA_MIDI_H
 
 #define DEFAULT_CLIENT_NAME       "AlsaMIDILooper"
+#define DEFAULT_BPM               120
 #define DEFAULT_TICKS_PER_QUARTER 128
 #define SHUTDOWN_WAIT_TIME        2
 
@@ -10,30 +11,18 @@
 #include <stdlib.h>
 #include <asoundlib.h>
 
-extern VALUE aMIDI_mod;
-extern VALUE aMIDI_cPort;
-extern VALUE aMIDI_eAlsaError;
+extern VALUE aMIDI;
+extern VALUE aMIDI_Pattern;
+extern VALUE aMIDI_Port;
+extern VALUE aMIDI_PortTX;
+extern VALUE aMIDI_PortRX;
+extern VALUE aMIDI_Client;
+extern VALUE aMIDI_Looper;
 
-struct midi_seq_client {
-  snd_seq_t *handle;
-  snd_seq_tick_time_t tick;
+extern VALUE aMIDI_AlsaError;
+extern VALUE aMIDI_SeqError;
 
-  int ticks_per_quarter;
-  int queue_id;
-  int transpose;
-  int bpm;
-  int tempo;
-  int seq_len;
-};
-typedef struct midi_seq_client seq_client_t;
-
-#define GET_BASE(obj)                             \
-  seq_client_t *seq;                              \
-  Data_Get_Struct(obj, seq_client_t, seq);
-
-VALUE alsa_midi_klass_base();
-VALUE alsa_midi_klass_base_new();
-VALUE alsa_midi_klass_port();
-VALUE alsa_midi_klass_port_new();
+#define MIDI_CONST(name) rb_const_get(aMIDI, rb_intern(name))
+#define NEW(klass_name)  rb_class_new_instance(0, NULL, MIDI_CONST(klass_name));
 
 #endif /*ALSA_MIDI_H*/
