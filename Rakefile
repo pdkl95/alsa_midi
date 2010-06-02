@@ -11,6 +11,7 @@ begin
     gem.homepage = "http://git.thoughtnoise.net/"
     gem.authors = ["Brent Sanders"]
     gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
+    gem.add_runtime_dependency "color_debug_messages", ">= 1.1.3"
     gem.extensions << 'ext/extconf.rb'
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end

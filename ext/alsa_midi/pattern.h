@@ -4,13 +4,14 @@
 #define MAX_EVENTS 32
 
 struct midi_event {
-  
+  int x;
 };
-typedef struct midi_event midi_ev_t;
+typedef struct midi_event ev_t;
 
 struct midi_pattern {
-  midi_ev_t events[MAX_EVENTS];
+  ev_t events[MAX_EVENTS];
 };
+typedef struct midi_pattern pat_t;
 
 void Init_aMIDI_Pattern();
 

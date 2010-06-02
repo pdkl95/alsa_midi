@@ -1,21 +1,20 @@
 #include "alsa_midi.h"
-#include "pattern.h"
-#include "client.h"
 
 static VALUE client_set_queue_len(VALUE self, VALUE new_queue_length)
 {
   GET_CLIENT;
   int len = NUM2INT(new_queue_length);
   snd_seq_set_client_pool_output(client->handle, len);
-  printf("Allocated sequencer queue (length == %d)\n", len);
-  return INT2NUM(len);
+  
+  DEBUG_VAL("output pool length: %d", new_queue_length);
+  return new_queue_length;
 }
 
 static VALUE client_set_name(VALUE self, VALUE new_name)
 {
   GET_CLIENT;
   client->name = StringValuePtr(new_name);
-  printf("NEW name: %s\n", client->name);
+  DEBUG_STR("ALSA client name: \"%s\"", client->name);
   snd_seq_set_client_name(client->handle, client->name);
   return new_name;
 }
@@ -37,7 +36,10 @@ static VALUE client_set_bpm(VALUE self, VALUE new_bpm)
   double tpq = (double)(client->ticks_per_quarter);
   double bpm = (double)(client->bpm);
   client->tempo = (int)(6e7 / (bpm * tpq * tpq));
-  printf("New Tempo: %d bpm, %d us/tick\n", client->bpm, client->tempo);
+
+  DEBUG("NEW TEMPO --->");
+  DEBUG_NUM("  beats per minute:\t%d bpm", client->bpm);
+  DEBUG_NUM("       tick period:\t %d us/tick", client->tempo);
 
   snd_seq_queue_tempo_set_tempo(queue_tempo, client->tempo);
   snd_seq_queue_tempo_set_ppq(queue_tempo, client->ticks_per_quarter);
@@ -59,29 +61,30 @@ static VALUE client_get_tempo(VALUE self)
   return INT2NUM(client->tempo);
 }
 
-static VALUE seq_startup(VALUE self)
+static VALUE client_start_queue(VALUE self)
 {
   GET_CLIENT;
-  int npfd;
-  struct pollfd *pfd;
 
+  DEBUG("GO!");
   snd_seq_start_queue(client->handle, client->queue_id, NULL);
   snd_seq_drain_output(client->handle);
-  npfd = snd_seq_poll_descriptors_count(client->handle, POLLIN);
-  pfd = (struct pollfd *)alloca(npfd * sizeof(struct pollfd));
-  snd_seq_poll_descriptors(client->handle, pfd, npfd, POLLIN);
 
+  DEBUG("collecting poll descriptors...");
+  int           npfd = snd_seq_poll_descriptors_count(client->handle, POLLIN);
+  struct pollfd *pfd = (struct pollfd *)alloca(npfd * sizeof(struct pollfd));
+  DEBUG("pollin");
+  snd_seq_poll_descriptors(client->handle, pfd, npfd, POLLIN);
 }
 
 static void clear_queue(alsa_midi_client_t *client)
 {
   if (client->queue_id) {
-    printf("Clearing sequencer queue...\n");
+    printf("draining sequencer output...");
     //snd_seq_clear_queue(client->queue_id);
     snd_seq_drain_output(client->handle);
     sleep(SHUTDOWN_WAIT_TIME);
     snd_seq_stop_queue(client->handle, client->queue_id, NULL);
-    printf("Sequencer queue cleared!\n");
+    printf("sequencer queue cleared!");
   }
 }
 
@@ -127,4 +130,5 @@ void Init_aMIDI_Client()
   rb_define_method(aMIDI_Client, "tempo",         client_get_tempo,     0);
   rb_define_method(aMIDI_Client, "bpm",           client_get_bpm,       0);
   rb_define_method(aMIDI_Client, "bpm=",          client_set_bpm,       1);
+  rb_define_method(aMIDI_Client, "start_queue!",  client_start_queue,   0);
 }
