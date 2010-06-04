@@ -131,9 +131,12 @@ static VALUE Client_alloc(VALUE klass)
 void Init_aMIDI_Client()
 {
   CUSTOM_ALLOC(Client);
+
   ACCESSOR(Client, name);
   ACCESSOR(Client, bpm);
+
   SETTER(Client, queue_length);
   GETTER(Client, tempo);
+
   FUNC_X(Client, start_queue, 0);
 }

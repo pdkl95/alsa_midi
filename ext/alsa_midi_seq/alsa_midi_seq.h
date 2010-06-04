@@ -33,22 +33,22 @@ extern VALUE aMIDI_SeqError;
 
 #define OBJ_GET_IV(obj, iv_name)      rb_iv_get(obj, "@" #iv_name)
 #define OBJ_SET_IV(obj, iv_name, val) rb_iv_set(obj, "@" #iv_name, val)
-#define GET_IV(iv_name)               OBJ_GET_IV(self, iv_name)
-#define SET_IV(iv_name, val)          OBJ_SET_IV(self, iv_name, val)
+#define     GET_IV(     iv_name)      OBJ_GET_IV(self, iv_name)
+#define     SET_IV(     iv_name, val) OBJ_SET_IV(self, iv_name, val)
 
-#define IV_STR(name)                                    \
-  VALUE name##_value = GET_IV(name);                    \
+#define IV_STR(name)                         \
+  VALUE name##_value = GET_IV(name);         \
   char *name = StringValuePtr(name##_value);
 
-#define IV_INT(name)                            \
-  VALUE name##_value = GET_IV(name);            \
+#define IV_INT(name)                         \
+  VALUE name##_value = GET_IV(name);         \
   int   name = NUM2INT(name##_value);
 
 #define DEBUG_MSG(obj, type, msg) \
   rb_funcall(obj, rb_intern(type), 1, msg)
 
 #define DEBUG(msg) DEBUG_MSG(self, "debug", rb_str_new2(msg))
-#define INFO(msg)  DEBUG_MSG(self, "info",  rb_str_new2(msg))
+#define  INFO(msg) DEBUG_MSG(self,  "info", rb_str_new2(msg))
 
 #define PRINTF(fmt, value)                     \
   rb_funcall(rb_mKernel, rb_intern("sprintf"), \
@@ -58,15 +58,15 @@ extern VALUE aMIDI_SeqError;
   rb_funcall(rb_mKernel, rb_intern("sprintf"), \
              3, rb_str_new2(fmt), v1, v2)
 
-#define DEBUG_MSG_VAL(obj, type, fmt, value)    \
+#define DEBUG_MSG_VAL(obj, type, fmt, value)   \
   DEBUG_MSG(obj, type, PRINTF(fmt, value));
 
 #define DEBUG_VAL(fmt, value) DEBUG_MSG_VAL(self, "debug", fmt, value)
+#define  INFO_VAL(fmt, value) DEBUG_MSG_VAL(self, "info", fmt, value)
 #define DEBUG_STR(fmt, value) DEBUG_VAL(fmt, rb_str_new2(value))
+#define  INFO_STR(fmt, value)  INFO_VAL(fmt, rb_str_new2(value))
 #define DEBUG_NUM(fmt, value) DEBUG_VAL(fmt, INT2NUM(value))
-#define INFO_VAL(fmt, value) DEBUG_MSG_VAL(self, "info", fmt, value)
-#define INFO_STR(fmt, value) INFO_VAL(fmt, rb_str_new2(value))
-#define INFO_NUM(fmt, value) INFO_VAL(fmt, INT2NUM(value))
+#define  INFO_NUM(fmt, value)  INFO_VAL(fmt, INT2NUM(value))
 
 #define MIDI_CONST(name) rb_const_get(aMIDI, rb_intern(name))
 #define NEW(klass_name)  rb_class_new_instance(0, NULL, MIDI_CONST(klass_name));
@@ -74,10 +74,10 @@ extern VALUE aMIDI_SeqError;
 #define CUSTOM_ALLOC(klass) \
   rb_define_alloc_func(aMIDI_##klass, klass##_alloc);
 
-#define F_DEF(klass, name, argc, name_extra, separ) \
-  rb_define_method(aMIDI_##klass,                   \
-                   #name name_extra,                \
-                   klass##separ##name,              \
+#define F_DEF(klass, name, argc, name_extra, joiner) \
+  rb_define_method(aMIDI_##klass,                    \
+                   #name name_extra,                 \
+                   klass##joiner##name,              \
                    argc)
 
 #define FUNC(  klass, name, argc) F_DEF(klass, name, argc,  "",     _)

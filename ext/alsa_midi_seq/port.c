@@ -29,15 +29,14 @@ static VALUE Port_setup(VALUE self)
   return retval;
 }
 
-static VALUE PortTX_get_cap_flags(VALUE self)
-{
-  return INT2NUM(SND_SEQ_PORT_CAP_READ|SND_SEQ_PORT_CAP_SUBS_READ);
-}
-
-static VALUE PortRX_get_cap_flags(VALUE self)
-{
-  return INT2NUM(SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE);
-}
+#define CAP_FLAG(klass, type)                       \
+  static VALUE klass##_get_cap_flags(VALUE self)    \
+  {                                                 \
+    return INT2NUM( SND_SEQ_PORT_CAP_##type |       \
+                    SND_SEQ_PORT_CAP_SUBS_##type);  \
+  }
+CAP_FLAG(PortTX, READ)
+CAP_FLAG(PortRX, WRITE)
 
 static VALUE Port_each_connected(VALUE self)
 {
@@ -96,7 +95,7 @@ static VALUE PortTX_send_note(VALUE self)
   snd_seq_event_output(client->handle, &ev);
   snd_seq_drain_output(client->handle);
 
-  INFO("NOTE!");
+  //INFO("NOTE!");
   rb_funcall(self, rb_intern("show_status!"), 0);
   return Qtrue;
 }
