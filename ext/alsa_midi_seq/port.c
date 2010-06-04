@@ -1,4 +1,4 @@
-#include "alsa_midi.h"
+#include "alsa_midi_seq.h"
 
 static alsa_midi_client_t *client_for(VALUE self)
 {

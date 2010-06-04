@@ -1,4 +1,4 @@
-#include "alsa_midi.h"
+#include "alsa_midi_seq.h"
 
 static void event_free(ev_t *ev)
 {

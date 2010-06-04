@@ -1,8 +1,7 @@
 #!/usr/bin/env ruby
 require 'mkmf'
 
-DIR_NAME = 'alsa_midi'
-LIB_NAME = 'looper'
+LIB_NAME = 'alsa_midi_seq'
 
 ALSA_PKG = 'alsa'          # for pkg-config
 ALSA_H   = 'asoundlib.h'
@@ -36,6 +35,4 @@ end
   have_type(t, ALSA_H) or fail "Missing ALSA type: #{t}"
 end
 
-#dir_config(DIR_NAME)
-#create_makefile("#{DIR_NAME}/#{LIB_NAME}", DIR_NAME)
-create_makefile 'alsa_midi', 'alsa_midi'
+create_makefile LIB_NAME, LIB_NAME

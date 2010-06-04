@@ -1,4 +1,4 @@
-#include "alsa_midi.h"
+#include "alsa_midi_seq.h"
 
 VALUE aMIDI;
 VALUE aMIDI_Base;
@@ -13,7 +13,7 @@ VALUE aMIDI_Looper;
 VALUE aMIDI_AlsaError;
 VALUE aMIDI_SeqError;
 
-void Init_alsa_midi()
+void Init_alsa_midi_seq()
 {
   aMIDI      = rb_define_module("AlsaMIDI");
   aMIDI_Base = rb_define_class_under(aMIDI, "Base", rb_cObject);

@@ -1,4 +1,4 @@
-#include "alsa_midi.h"
+#include "alsa_midi_seq.h"
 
 static VALUE client_set_queue_len(VALUE self, VALUE new_queue_length)
 {
