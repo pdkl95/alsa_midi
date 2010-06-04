@@ -6,6 +6,9 @@
 #define DEFAULT_TICKS_PER_QUARTER 128
 #define SHUTDOWN_WAIT_TIME        2
 
+#define aMIDI_inline inline
+//#define aMIDI_inline
+
 #include "ruby.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +54,10 @@ extern VALUE aMIDI_SeqError;
   rb_funcall(rb_mKernel, rb_intern("sprintf"), \
              2, rb_str_new2(fmt), value)
 
+#define PRINTF2(fmt, v1, v2)                   \
+  rb_funcall(rb_mKernel, rb_intern("sprintf"), \
+             3, rb_str_new2(fmt), v1, v2)
+
 #define DEBUG_MSG_VAL(obj, type, fmt, value)    \
   DEBUG_MSG(obj, type, PRINTF(fmt, value));
 
@@ -58,11 +65,31 @@ extern VALUE aMIDI_SeqError;
 #define DEBUG_STR(fmt, value) DEBUG_VAL(fmt, rb_str_new2(value))
 #define DEBUG_NUM(fmt, value) DEBUG_VAL(fmt, INT2NUM(value))
 #define INFO_VAL(fmt, value) DEBUG_MSG_VAL(self, "info", fmt, value)
-#define INFO_STR(fmt, value) INFO_VAL(fmt, rb_str_new2(info))
-#define INFO_NUM(fmt, value) INFO_VAL(fmt, INT2NUM(info))
+#define INFO_STR(fmt, value) INFO_VAL(fmt, rb_str_new2(value))
+#define INFO_NUM(fmt, value) INFO_VAL(fmt, INT2NUM(value))
 
 #define MIDI_CONST(name) rb_const_get(aMIDI, rb_intern(name))
 #define NEW(klass_name)  rb_class_new_instance(0, NULL, MIDI_CONST(klass_name));
+
+#define CUSTOM_ALLOC(klass) \
+  rb_define_alloc_func(aMIDI_##klass, klass##_alloc);
+
+#define F_DEF(klass, name, argc, name_extra, separ) \
+  rb_define_method(aMIDI_##klass,                   \
+                   #name name_extra,                \
+                   klass##separ##name,              \
+                   argc)
+
+#define FUNC(  klass, name, argc) F_DEF(klass, name, argc,  "",     _)
+#define FUNC_X(klass, name, argc) F_DEF(klass, name, argc, "!",     _)
+#define FUNC_Q(klass, name, argc) F_DEF(klass, name, argc, "?",     _)
+#define GETTER(klass, name)       F_DEF(klass, name,    0,  "", _get_)
+#define SETTER(klass, name)       F_DEF(klass, name,    1, "=", _set_)
+
+#define ACCESSOR(klass, name) \
+  GETTER(klass, name);        \
+  SETTER(klass, name);
+
 
 #include "pattern.h"
 #include "port.h"

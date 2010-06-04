@@ -1,7 +1,7 @@
 module AlsaMIDI
   class Client
     attr_accessor :opt
-    attr_reader :ports_tx, :ports_rx
+    attr_reader :client_id, :ports_tx, :ports_rx
 
     def initialize(opt={})
       @opt = AlsaMIDI::DEFAULT_CLIENT_OPT.merge(opt)
@@ -78,6 +78,11 @@ CLIENT_TO_S
 
     def create_rx_port(opt={})
       @ports_rx.push AlsaMIDI::Port::RX.new(self, opt)
+    end
+
+    def tempo_changed!(old_bpm, old_tempo)
+      info "NEW TEMPO --> #{tempo} us/tick, #{bpm} bpm"
+      info "        was-> #{old_tempo} us/tick, #{old_bpm} bpm"
     end
 
     def setup_ports(type, klass, names = opt[type])

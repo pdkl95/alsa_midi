@@ -14,6 +14,14 @@ module AlsaMIDI
       end
     end
 
+    def client_id
+      @client.client_id
+    end
+
+    def port_id_string
+      "#{client_id}:#{@port_id}"
+    end
+
     def type_name
       @type_name ||= self.class.to_s.gsub(/.*::/,'')
     end
@@ -21,14 +29,38 @@ module AlsaMIDI
     def initialize(client_obj, opt={})
       @port_id = nil
       @client  = client_obj
-      @name    = Port.port_name(@client,
-                                opt[:name] || self.class.default_name)
+      @name    = Port.port_name(@client, (opt[:name] || self.class.default_name))
       setup!
       info "New port: #{inspect}"
     end
 
+    def connected_clients
+      returning [] do |list|
+        each_connected do |cid, pid, idx|
+          list.push([cid, pid])
+        end
+      end
+    end
+
+    def to_s
+      list = connected_clients
+      str = "Port::#{type_name}[#{name.inspect}, #{port_id_string}"
+      if list.length > 0
+        str += ' -> ('
+        str += list.map do |c|
+          "#{c[0]}:#{c[1]}"
+        end.join(', ')
+        str += ')'
+      end
+      str + ']'
+    end
+
+    def show_status!
+      info to_s
+    end
+
     def inspect
-      "#<Port::#{type_name} id=#{@port_id}, name=#{name.inspect}>"
+      "#<#{to_s}>"
     end
 
     class TX < Port

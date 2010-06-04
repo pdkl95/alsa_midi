@@ -1,6 +1,6 @@
 #include "alsa_midi_seq.h"
 
-static VALUE client_set_queue_len(VALUE self, VALUE new_queue_length)
+static VALUE Client_set_queue_length(VALUE self, VALUE new_queue_length)
 {
   GET_CLIENT;
   int len = NUM2INT(new_queue_length);
@@ -10,7 +10,7 @@ static VALUE client_set_queue_len(VALUE self, VALUE new_queue_length)
   return new_queue_length;
 }
 
-static VALUE client_set_name(VALUE self, VALUE new_name)
+static VALUE Client_set_name(VALUE self, VALUE new_name)
 {
   GET_CLIENT;
   client->name = StringValuePtr(new_name);
@@ -19,49 +19,54 @@ static VALUE client_set_name(VALUE self, VALUE new_name)
   return new_name;
 }
 
-static VALUE client_get_name(VALUE self)
+static VALUE Client_get_name(VALUE self)
 {
   GET_CLIENT;
   return client->name ? rb_str_new2(client->name) : Qnil;
 }
 
-static VALUE client_set_bpm(VALUE self, VALUE new_bpm)
+static aMIDI_inline void set_tempo_from_bpm(alsa_midi_client_t *client)
 {
-  GET_CLIENT;
-  client->bpm = NUM2INT(new_bpm);
-
-  snd_seq_queue_tempo_t *queue_tempo;
-  snd_seq_queue_tempo_malloc(&queue_tempo);
-
   double tpq = (double)(client->ticks_per_quarter);
   double bpm = (double)(client->bpm);
   client->tempo = (int)(6e7 / (bpm * tpq * tpq));
+}
 
-  DEBUG("NEW TEMPO --->");
-  DEBUG_NUM("  beats per minute:\t%d bpm", client->bpm);
-  DEBUG_NUM("       tick period:\t %d us/tick", client->tempo);
+static VALUE Client_set_bpm(VALUE self, VALUE new_bpm)
+{
+  GET_CLIENT;
+  int old_bpm   = client->bpm;
+  int old_tempo = client->tempo;
 
+  client->bpm = NUM2INT(new_bpm);
+  set_tempo_from_bpm(client);
+
+  snd_seq_queue_tempo_t *queue_tempo;
+  snd_seq_queue_tempo_malloc(&queue_tempo);
   snd_seq_queue_tempo_set_tempo(queue_tempo, client->tempo);
   snd_seq_queue_tempo_set_ppq(queue_tempo, client->ticks_per_quarter);
   snd_seq_set_queue_tempo(client->handle, client->queue_id, queue_tempo);
-
   snd_seq_queue_tempo_free(queue_tempo);
+
+  rb_funcall(self, rb_intern("tempo_changed!"), 2,
+             INT2NUM(old_bpm), INT2NUM(old_tempo));
+
   return new_bpm;
 }
 
-static VALUE client_get_bpm(VALUE self)
+static VALUE Client_get_bpm(VALUE self)
 {
   GET_CLIENT;
   return INT2NUM(client->bpm);
 }
 
-static VALUE client_get_tempo(VALUE self)
+static VALUE Client_get_tempo(VALUE self)
 {
   GET_CLIENT;
   return INT2NUM(client->tempo);
 }
 
-static VALUE client_start_queue(VALUE self)
+static VALUE Client_start_queue(VALUE self)
 {
   GET_CLIENT;
 
@@ -69,11 +74,11 @@ static VALUE client_start_queue(VALUE self)
   snd_seq_start_queue(client->handle, client->queue_id, NULL);
   snd_seq_drain_output(client->handle);
 
-  DEBUG("collecting poll descriptors...");
+  /*  DEBUG("collecting poll descriptors...");
   int           npfd = snd_seq_poll_descriptors_count(client->handle, POLLIN);
   struct pollfd *pfd = (struct pollfd *)alloca(npfd * sizeof(struct pollfd));
   DEBUG("pollin");
-  snd_seq_poll_descriptors(client->handle, pfd, npfd, POLLIN);
+  snd_seq_poll_descriptors(client->handle, pfd, npfd, POLLIN);*/
 }
 
 static void clear_queue(alsa_midi_client_t *client)
@@ -102,7 +107,7 @@ static void client_free(alsa_midi_client_t *client)
   free(client);
 }
 
-static VALUE client_alloc(VALUE klass)
+static VALUE Client_alloc(VALUE klass)
 {
   alsa_midi_client_t *client;
   VALUE obj = Data_Make_Struct(klass, alsa_midi_client_t,
@@ -113,22 +118,22 @@ static VALUE client_alloc(VALUE klass)
   client->ticks_per_quarter = DEFAULT_TICKS_PER_QUARTER;
   client->queue_id          = 0;
 
+  set_tempo_from_bpm(client);
+
   if (snd_seq_open(&(client->handle), "default", SND_SEQ_OPEN_DUPLEX, 0) < 0) {
     rb_raise(aMIDI_AlsaError, "Error opening ALSA sequencer.");
     exit(1);
   }
-
+  rb_iv_set(obj, "@client_id", INT2NUM(snd_seq_client_id(client->handle)));
   return obj;
 }
 
 void Init_aMIDI_Client()
 {
-  rb_define_alloc_func(aMIDI_Client, client_alloc);
-  rb_define_method(aMIDI_Client, "name",          client_get_name,      0);
-  rb_define_method(aMIDI_Client, "name=",         client_set_name,      1);
-  rb_define_method(aMIDI_Client, "queue_length=", client_set_queue_len, 1);
-  rb_define_method(aMIDI_Client, "tempo",         client_get_tempo,     0);
-  rb_define_method(aMIDI_Client, "bpm",           client_get_bpm,       0);
-  rb_define_method(aMIDI_Client, "bpm=",          client_set_bpm,       1);
-  rb_define_method(aMIDI_Client, "start_queue!",  client_start_queue,   0);
+  CUSTOM_ALLOC(Client);
+  ACCESSOR(Client, name);
+  ACCESSOR(Client, bpm);
+  SETTER(Client, queue_length);
+  GETTER(Client, tempo);
+  FUNC_X(Client, start_queue, 0);
 }

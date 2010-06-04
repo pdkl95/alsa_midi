@@ -11,6 +11,7 @@ end
 # external tools
 alsa_midi_require 'rubygems'
 alsa_midi_require 'color_debug_messages'
+alsa_midi_require 'facets/kernel/returning'
 
 module AlsaMIDI
   DEFAULT_CLIENT_OPT = {
