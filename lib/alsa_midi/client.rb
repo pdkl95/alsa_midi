@@ -1,7 +1,7 @@
 module AlsaMIDI
   class Client
     attr_accessor :opt
-    attr_reader :client_id, :ports_tx, :ports_rx
+    attr_reader :ports_tx, :ports_rx
 
     def initialize(opt={})
       @opt = AlsaMIDI::DEFAULT_CLIENT_OPT.merge(opt)
@@ -13,11 +13,8 @@ module AlsaMIDI
 
       setup_ports :tx, AlsaMIDI::Port::TX
       setup_ports :rx, AlsaMIDI::Port::RX
-    end
 
-    def start!
-      self.queue_length = @opt[:queue_length]
-      start_queue!
+      AlsaMIDI::RT.register_client(self)
     end
 
     def inspect

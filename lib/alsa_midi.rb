@@ -21,11 +21,15 @@ module AlsaMIDI
     :rx   => 2,
     :queue_length => 64
   }
+  DEFAULT_RT_OPT = {
+    :rtc => "/dev/rtc"
+  }
 end
 
 # pull in the C backend
 alsa_midi_require(File.dirname(__FILE__) + '/../ext/alsa_midi_seq')
 
 # pull in the reset of the libarary as (easier...) ruby code
+require 'alsa_midi/rt'
 require 'alsa_midi/port'
 require 'alsa_midi/client'

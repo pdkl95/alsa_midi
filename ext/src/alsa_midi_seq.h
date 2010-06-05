@@ -16,6 +16,7 @@
 
 extern VALUE aMIDI;
 extern VALUE aMIDI_Base;
+extern VALUE aMIDI_RT;
 extern VALUE aMIDI_Event;
 extern VALUE aMIDI_Pattern;
 extern VALUE aMIDI_Port;
@@ -24,8 +25,9 @@ extern VALUE aMIDI_PortRX;
 extern VALUE aMIDI_Client;
 extern VALUE aMIDI_Looper;
 
+extern VALUE aMIDI_Error;
+extern VALUE aMIDI_TimerError;
 extern VALUE aMIDI_AlsaError;
-extern VALUE aMIDI_SeqError;
 
 #define KLASS_UNDER(scope, name) rb_const_get(scope, rb_intern(#name))
 #define KLASS(name) KLASS_UNDER(rb_cObject, name)
@@ -90,7 +92,7 @@ extern VALUE aMIDI_SeqError;
   GETTER(klass, name);        \
   SETTER(klass, name);
 
-
+#include "rt.h"
 #include "pattern.h"
 #include "port.h"
 #include "client.h"

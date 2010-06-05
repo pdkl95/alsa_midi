@@ -11,13 +11,29 @@ pkg = pkg_config(ALSA_PKG) or fail "Missing package #{ALSA_PKG} in pkg-config!"
 header_dir = pkg[0].sub(/^-I/,'').sub(/\s*$/,'')
 puts "using ALSA headers in: #{header_dir.inspect}"
 
-['stdio.h', 'stdlib.h', 'unistd.h'
+['stdio.h', 'stdlib.h', 'unistd.h', 'pthread.h', 'time.h'
 ].each do |hdr|
   have_header(hdr) or fail "missing: basic headers #{hdr.inspect}"
 end
 
+have_library('pthread', 'pthread_attr_init') or fail "missing: pthreads!"
+
+['clock_nanosleep', 'clock_gettime'].each do |func|
+  have_func(func) or fail "missing POSIX high-resolution timer function: #{func}()!"
+end
+['CLOCK_MONOTONIC', 'TIMER_ABSTIME'].each do |m|
+  have_macro(m, 'time.h') or fail "Missing time.h macro: #{m}"
+end
+
+if have_header('sched.h')
+  have_macro('SCHED_RR', 'sched.h')
+  have_func('sched_setscheduler')
+  have_func('sched_get_priority_max')
+else
+  warn "Missing: sched.h - realtime priority setting disabled!"
+end
+
 have_header(ALSA_H) or fail "missing: alsa header!"
-#&& have_library('asound', 'snd_seq_open')
 
 ['OPEN_DUPLEX',    'PORT_TYPE_APPLICATION',
  'PORT_CAP_READ',  'PORT_CAP_SUBS_READ',
@@ -35,4 +51,4 @@ end
   have_type(t, ALSA_H) or fail "Missing ALSA type: #{t}"
 end
 
-create_makefile LIB_NAME, LIB_NAME
+create_makefile LIB_NAME, 'src'

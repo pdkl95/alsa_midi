@@ -2,11 +2,10 @@
 #define ALSA_CLIENT_H
 
 struct alsa_midi_seq_client {
-  snd_seq_t           *handle;
-  snd_seq_tick_time_t  tick;
-  char *name;
+  snd_seq_t *handle;
+  char      *name;
 
-  int queue_id;
+  int client_id;
   int ppq; // Pulses Per Quarter
   int bpm;
   int tempo;

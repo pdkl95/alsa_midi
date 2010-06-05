@@ -10,8 +10,9 @@ puts c.to_details
 e = AlsaMIDI::Event.new
 p = AlsaMIDI::Pattern.new
 
-c.start!
-
+sleep 5
+AlsaMIDI::RT.worker.stop!
+exit
 while true
   c.each_tx_port do |tx|
     tx.send_note
