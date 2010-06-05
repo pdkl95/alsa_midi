@@ -17,6 +17,7 @@ static VALUE Port_setup(VALUE self)
   CLIENT_PTR;
   IV_STR(name);
   int ret = snd_seq_create_simple_port(client->handle, name, find_caps(self),
+                                       SND_SEQ_PORT_TYPE_MIDI_GENERIC |
                                        SND_SEQ_PORT_TYPE_APPLICATION);
   int retval = INT2NUM(ret);
   //DEBUG_NUM("@port_id = %d", ret);
@@ -81,22 +82,22 @@ static VALUE Port_each_connected(VALUE self)
 static VALUE PortTX_send_note(VALUE self)
 {
   snd_seq_event_t ev;
+
   CLIENT_PTR;
   IV_INT(port_id);
 
   snd_seq_ev_clear(&ev);
   snd_seq_ev_set_source(&ev, port_id);
-  //snd_seq_ev_set_broadcast(&ev);
   snd_seq_ev_set_subs(&ev);
+
+  snd_seq_ev_set_noteon(&ev, 0, 64, 127);
+
   snd_seq_ev_set_direct(&ev);
-
-  snd_seq_ev_set_note(&ev, 0, 64, 127, client->ticks_per_quarter);
-
-  snd_seq_event_output(client->handle, &ev);
-  snd_seq_drain_output(client->handle);
+  snd_seq_event_output_direct(client->handle, &ev);
 
   //INFO("NOTE!");
   rb_funcall(self, rb_intern("show_status!"), 0);
+
   return Qtrue;
 }
 

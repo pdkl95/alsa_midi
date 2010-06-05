@@ -4,7 +4,7 @@ static VALUE Client_set_queue_length(VALUE self, VALUE new_queue_length)
 {
   GET_CLIENT;
   int len = NUM2INT(new_queue_length);
-  snd_seq_set_client_pool_output(client->handle, len);
+  //snd_seq_set_client_pool_output(client->handle, len);
   
   DEBUG_VAL("output pool length: %d", new_queue_length);
   return new_queue_length;
@@ -27,30 +27,43 @@ static VALUE Client_get_name(VALUE self)
 
 static aMIDI_inline void set_tempo_from_bpm(alsa_midi_client_t *client)
 {
-  double tpq = (double)(client->ticks_per_quarter);
-  double bpm = (double)(client->bpm);
-  client->tempo = (int)(6e7 / (bpm * tpq * tpq));
+  double d_ppq = (double)(client->ppq);
+  double d_bpm = (double)(client->bpm);
+  client->tempo = (int)(6e7 / (d_bpm * d_ppq * d_ppq));
+}
+
+static void update_queue_tempo(VALUE self)
+{
+  GET_CLIENT;
+  set_tempo_from_bpm(client);
+  return;
+  snd_seq_queue_tempo_t *queue_tempo;
+  snd_seq_queue_tempo_alloca(&queue_tempo);
+  snd_seq_queue_tempo_set_tempo(queue_tempo, client->tempo);
+  snd_seq_queue_tempo_set_ppq(queue_tempo, client->ppq);
+  snd_seq_set_queue_tempo(client->handle, client->queue_id, queue_tempo);
+  rb_funcall(self, rb_intern("tempo_changed!"), 0);
+}
+
+static VALUE Client_set_ppq(VALUE self, VALUE new_ppq)
+{
+  GET_CLIENT;
+  client->ppq = NUM2INT(new_ppq);
+  update_queue_tempo(self);
+  return new_ppq;
+}
+
+static VALUE Client_get_ppq(VALUE self)
+{
+  GET_CLIENT;
+  return INT2NUM(client->ppq);
 }
 
 static VALUE Client_set_bpm(VALUE self, VALUE new_bpm)
 {
   GET_CLIENT;
-  int old_bpm   = client->bpm;
-  int old_tempo = client->tempo;
-
   client->bpm = NUM2INT(new_bpm);
-  set_tempo_from_bpm(client);
-
-  snd_seq_queue_tempo_t *queue_tempo;
-  snd_seq_queue_tempo_malloc(&queue_tempo);
-  snd_seq_queue_tempo_set_tempo(queue_tempo, client->tempo);
-  snd_seq_queue_tempo_set_ppq(queue_tempo, client->ticks_per_quarter);
-  snd_seq_set_queue_tempo(client->handle, client->queue_id, queue_tempo);
-  snd_seq_queue_tempo_free(queue_tempo);
-
-  rb_funcall(self, rb_intern("tempo_changed!"), 2,
-             INT2NUM(old_bpm), INT2NUM(old_tempo));
-
+  update_queue_tempo(self);
   return new_bpm;
 }
 
@@ -71,8 +84,8 @@ static VALUE Client_start_queue(VALUE self)
   GET_CLIENT;
 
   DEBUG("GO!");
-  snd_seq_start_queue(client->handle, client->queue_id, NULL);
-  snd_seq_drain_output(client->handle);
+  //snd_seq_start_queue(client->handle, client->queue_id, NULL);
+  //snd_seq_drain_output(client->handle);
 
   /*  DEBUG("collecting poll descriptors...");
   int           npfd = snd_seq_poll_descriptors_count(client->handle, POLLIN);
@@ -113,10 +126,10 @@ static VALUE Client_alloc(VALUE klass)
   VALUE obj = Data_Make_Struct(klass, alsa_midi_client_t,
                                NULL, client_free, client);
 
-  client->name              = DEFAULT_CLIENT_NAME;
-  client->bpm               = DEFAULT_BPM;
-  client->ticks_per_quarter = DEFAULT_TICKS_PER_QUARTER;
-  client->queue_id          = 0;
+  client->name     = DEFAULT_CLIENT_NAME;
+  client->bpm      = DEFAULT_BPM;
+  client->ppq      = DEFAULT_PPQ;
+  client->queue_id = 0;
 
   set_tempo_from_bpm(client);
 
@@ -134,6 +147,7 @@ void Init_aMIDI_Client()
 
   ACCESSOR(Client, name);
   ACCESSOR(Client, bpm);
+  ACCESSOR(Client, ppq);
 
   SETTER(Client, queue_length);
   GETTER(Client, tempo);

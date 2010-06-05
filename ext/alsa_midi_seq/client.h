@@ -6,12 +6,10 @@ struct alsa_midi_seq_client {
   snd_seq_tick_time_t  tick;
   char *name;
 
-  int ticks_per_quarter;
   int queue_id;
-  int transpose;
+  int ppq; // Pulses Per Quarter
   int bpm;
   int tempo;
-  int seq_len;
 };
 typedef struct alsa_midi_seq_client alsa_midi_client_t;
 

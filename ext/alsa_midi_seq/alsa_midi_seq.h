@@ -1,10 +1,10 @@
 #ifndef ALSA_MIDI_H
 #define ALSA_MIDI_H
 
-#define DEFAULT_CLIENT_NAME       "AlsaMIDILooper"
-#define DEFAULT_BPM               120
-#define DEFAULT_TICKS_PER_QUARTER 128
-#define SHUTDOWN_WAIT_TIME        2
+#define DEFAULT_CLIENT_NAME "AlsaMIDILooper"
+#define DEFAULT_BPM         120
+#define DEFAULT_PPQ         128
+#define SHUTDOWN_WAIT_TIME  2
 
 #define aMIDI_inline inline
 //#define aMIDI_inline
