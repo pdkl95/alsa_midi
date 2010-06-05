@@ -80,9 +80,8 @@ CLIENT_TO_S
       @ports_rx.push AlsaMIDI::Port::RX.new(self, opt)
     end
 
-    def tempo_changed!(old_bpm, old_tempo)
+    def tempo_changed!
       info "NEW TEMPO --> #{tempo} us/tick, #{bpm} bpm"
-      info "        was-> #{old_tempo} us/tick, #{old_bpm} bpm"
     end
 
     def setup_ports(type, klass, names = opt[type])
