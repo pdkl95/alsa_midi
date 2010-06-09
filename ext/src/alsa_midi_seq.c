@@ -2,7 +2,6 @@
 
 VALUE aMIDI;
 VALUE aMIDI_Base;
-VALUE aMIDI_RT;
 VALUE aMIDI_Event;
 VALUE aMIDI_Pattern;
 VALUE aMIDI_Port;
@@ -23,7 +22,6 @@ void Init_alsa_midi_seq()
   INCLUDE(aMIDI_Base, ColorDebugMessages);
 
 #define K(name) aMIDI_##name = rb_define_class_under(aMIDI, #name, aMIDI_Base)
-  K(RT);
   K(Event);
   K(Pattern);
   K(Port);
@@ -42,7 +40,6 @@ void Init_alsa_midi_seq()
   E(AlsaError);
 #undef E
 
-  Init_aMIDI_RT();
   Init_aMIDI_Pattern();
   Init_aMIDI_Port();
   Init_aMIDI_Client();

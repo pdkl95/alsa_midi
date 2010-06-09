@@ -1,16 +1,18 @@
 #include "alsa_midi_seq.h"
 
-void fifo_init(fifo_t *f, size_t item_sz, size_t item_cnt)
+fifo_t *fifo_alloc(size_t num_items)
 {
-  f->item_size  = item_sz;
-  f->item_count = item_cnt;
-  f->buf = ALLOC_N(void *, item_cnt);
+  fifo_t *f = ALLOC(fifo_t);
+  f->size = num_items;
+  f->buf = ALLOC_N(void *, f->size);
   f->rd = f->wr = 0;
+  return f;
 }
 
-void fifo_cleanup(fifo_t *f)
+void fifo_free(fifo_t *f)
 {
   xfree(f->buf);
+  xfree(f);
 }
 
 int fifo_write_ex(fifo_t *f, void *p)

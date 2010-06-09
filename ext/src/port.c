@@ -1,11 +1,11 @@
 #include "alsa_midi_seq.h"
 
-static aMIDI_inline alsa_midi_client_t *client_for(VALUE self)
+static aMIDI_inline client_t *client_for(VALUE self)
 {
   GET_CLIENT_STRUCT(GET_IV(client));
   return client;
 }
-#define CLIENT_PTR alsa_midi_client_t *client = client_for(self)
+#define CLIENT_PTR client_t *client = client_for(self)
 
 static unsigned int find_caps(VALUE self)  
 {
@@ -16,7 +16,7 @@ static VALUE Port_setup(VALUE self)
 {
   CLIENT_PTR;
   IV_STR(name);
-  int ret = snd_seq_create_simple_port(client->handle, name, find_caps(self),
+  int ret = snd_seq_create_simple_port(client->seq, name, find_caps(self),
                                        SND_SEQ_PORT_TYPE_MIDI_GENERIC |
                                        SND_SEQ_PORT_TYPE_APPLICATION);
   int retval = INT2NUM(ret);
@@ -54,7 +54,7 @@ static VALUE Port_each_connected(VALUE self)
 
   snd_seq_port_info_t *pinfo;
   snd_seq_port_info_alloca(&pinfo);
-  snd_seq_get_port_info(client->handle, port_id, pinfo);
+  snd_seq_get_port_info(client->seq, port_id, pinfo);
 
   const snd_seq_addr_t *port_addr = snd_seq_port_info_get_addr(pinfo);
 
@@ -65,7 +65,7 @@ static VALUE Port_each_connected(VALUE self)
   snd_seq_query_subscribe_set_index(subs, 0);
 
   int count = 0;
-  while (snd_seq_query_port_subscribers(client->handle, subs) >= 0) {
+  while (snd_seq_query_port_subscribers(client->seq, subs) >= 0) {
     const int idx = snd_seq_query_subscribe_get_index(subs);
     const snd_seq_addr_t *addr;
     addr = snd_seq_query_subscribe_get_addr(subs);
@@ -79,9 +79,9 @@ static VALUE Port_each_connected(VALUE self)
   return INT2NUM(count);
 }
 
-static snd_seq_event_t *get_ev(alsa_midi_client_t *client, int port_id)
+static snd_seq_event_t *get_ev(client_t *client, int port_id)
 {
-  snd_seq_event_t *ev = fifo_read(&client->rt->free_ev_fifo);
+  snd_seq_event_t *ev = fifo_read(client->ev_free);
   if (ev == NULL) {
     rb_raise(aMIDI_Error, "No free snd_seq_event_t objects on the FIFO!");
     return NULL;
@@ -94,10 +94,10 @@ static snd_seq_event_t *get_ev(alsa_midi_client_t *client, int port_id)
   return ev;
 }
 
-static void send_ev(alsa_midi_client_t *client, snd_seq_event_t *ev)
+static void send_ev(client_t *client, snd_seq_event_t *ev)
 {
   snd_seq_ev_set_direct(ev);
-  fifo_write(&client->rt->midi_tx_fifo, ev);
+  fifo_write(client->ev_tx, ev);
 }
 
 static VALUE PortTX_note_on(VALUE self, VALUE ch, VALUE note, VALUE vel)

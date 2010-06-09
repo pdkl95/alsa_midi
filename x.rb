@@ -10,7 +10,7 @@ require 'alsa_midi'
     puts m.inspect
   end
 end
-exit
+#exit
 
 c = AlsaMIDI::Client.new :tx => 1, :rx => ['input_aaa', 'input_bbb']
 puts c.to_details

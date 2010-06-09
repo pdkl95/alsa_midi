@@ -16,7 +16,6 @@
 
 extern VALUE aMIDI;
 extern VALUE aMIDI_Base;
-extern VALUE aMIDI_RT;
 extern VALUE aMIDI_Event;
 extern VALUE aMIDI_Pattern;
 extern VALUE aMIDI_Port;
@@ -93,7 +92,6 @@ extern VALUE aMIDI_AlsaError;
   SETTER(klass, name);
 
 #include "fifo.h"
-#include "rt.h"
 #include "pattern.h"
 #include "port.h"
 #include "client.h"
