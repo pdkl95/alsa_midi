@@ -4,6 +4,14 @@ $LOAD_PATH << File.dirname(__FILE__) + '/lib'
 
 require 'alsa_midi'
 
+[:major, :minor].each do |mode|
+  ('A'..'G').to_a.each do |key|
+    m = AlsaMIDI::Scale.new(key, mode)
+    puts m.inspect
+  end
+end
+exit
+
 c = AlsaMIDI::Client.new :tx => 1, :rx => ['input_aaa', 'input_bbb']
 puts c.to_details
 
