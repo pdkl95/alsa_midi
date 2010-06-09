@@ -19,5 +19,9 @@ port.note_on! 1, 58, 95
 port.note_off! 0, 55, 33
 port.note_off! 1, 58, 22
 
+sleep 1
+
+port.note! 10, 66, 121
+
 
 sleep 2000

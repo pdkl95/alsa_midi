@@ -109,7 +109,7 @@ static VALUE PortTX_note_on(VALUE self, VALUE ch, VALUE note, VALUE vel)
   snd_seq_ev_set_noteon(ev, NUM2INT(ch), NUM2INT(note), NUM2INT(vel));
   send_ev(client, ev);
 
-  return Qtrue;
+  return self;
 }
 
 static VALUE PortTX_note_off(VALUE self, VALUE ch, VALUE note, VALUE vel)
@@ -121,7 +121,14 @@ static VALUE PortTX_note_off(VALUE self, VALUE ch, VALUE note, VALUE vel)
   snd_seq_ev_set_noteoff(ev, NUM2INT(ch), NUM2INT(note), NUM2INT(vel));
   send_ev(client, ev);
 
-  return Qtrue;
+  return self;
+}
+
+static VALUE PortTX_note(VALUE self, VALUE ch, VALUE note, VALUE vel)
+{
+  PortTX_note_on(self, ch, note, vel);
+  PortTX_note_off(self, ch, note, vel);
+  return self;
 }
 
 void Init_aMIDI_Port()
@@ -133,6 +140,7 @@ void Init_aMIDI_Port()
 
   FUNC_X(PortTX, note_on,  3);
   FUNC_X(PortTX, note_off, 3);
+  FUNC_X(PortTX, note,     3);
 
   FUNC(Port,   each_connected, 0);
 }
