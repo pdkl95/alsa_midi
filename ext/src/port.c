@@ -79,24 +79,47 @@ static VALUE Port_each_connected(VALUE self)
   return INT2NUM(count);
 }
 
-static VALUE PortTX_send_note(VALUE self)
+static snd_seq_event_t *get_ev(alsa_midi_client_t *client, int port_id)
 {
-  snd_seq_event_t ev;
+  snd_seq_event_t *ev = fifo_read(&client->rt->free_ev_fifo);
+  if (ev == NULL) {
+    rb_raise(aMIDI_Error, "No free snd_seq_event_t objects on the FIFO!");
+    return NULL;
+  }
+  
+  snd_seq_ev_clear(ev);
+  snd_seq_ev_set_source(ev, port_id);
+  snd_seq_ev_set_subs(ev);
 
+  return ev;
+}
+
+static void send_ev(alsa_midi_client_t *client, snd_seq_event_t *ev)
+{
+  snd_seq_ev_set_direct(ev);
+  fifo_write(&client->rt->midi_tx_fifo, ev);
+}
+
+static VALUE PortTX_note_on(VALUE self, VALUE ch, VALUE note, VALUE vel)
+{
   CLIENT_PTR;
   IV_INT(port_id);
 
-  snd_seq_ev_clear(&ev);
-  snd_seq_ev_set_source(&ev, port_id);
-  snd_seq_ev_set_subs(&ev);
+  snd_seq_event_t *ev = get_ev(client, port_id);
+  snd_seq_ev_set_noteon(ev, NUM2INT(ch), NUM2INT(note), NUM2INT(vel));
+  send_ev(client, ev);
 
-  snd_seq_ev_set_noteon(&ev, 0, 64, 127);
+  return Qtrue;
+}
 
-  snd_seq_ev_set_direct(&ev);
-  snd_seq_event_output_direct(client->handle, &ev);
+static VALUE PortTX_note_off(VALUE self, VALUE ch, VALUE note, VALUE vel)
+{
+  CLIENT_PTR;
+  IV_INT(port_id);
 
-  //INFO("NOTE!");
-  rb_funcall(self, rb_intern("show_status!"), 0);
+  snd_seq_event_t *ev = get_ev(client, port_id);
+  snd_seq_ev_set_noteoff(ev, NUM2INT(ch), NUM2INT(note), NUM2INT(vel));
+  send_ev(client, ev);
 
   return Qtrue;
 }
@@ -108,6 +131,8 @@ void Init_aMIDI_Port()
   GETTER(PortTX, cap_flags);
   GETTER(PortRX, cap_flags);
 
-  FUNC(PortTX, send_note,      0);
+  FUNC_X(PortTX, note_on,  3);
+  FUNC_X(PortTX, note_off, 3);
+
   FUNC(Port,   each_connected, 0);
 }

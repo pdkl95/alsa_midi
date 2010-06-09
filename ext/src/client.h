@@ -5,6 +5,8 @@ struct alsa_midi_seq_client {
   snd_seq_t *handle;
   char      *name;
 
+  rt_t *rt;
+
   int client_id;
   int ppq; // Pulses Per Quarter
   int bpm;

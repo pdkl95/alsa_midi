@@ -9,6 +9,8 @@ struct rt_worker {
   pthread_t      thread;
   pthread_attr_t attr;
 
+  snd_seq_t *client_handle;
+
   int running;
   int exit_status;
 
@@ -28,7 +30,7 @@ typedef struct rt_worker rt_t;
 
 extern void Init_aMIDI_RT();
 
-#define MIDI_EV_FIFO_SIZE 32
+#define MIDI_EV_FIFO_SIZE 1024
 #define MIDI_EV_FIFO(obj) \
   fifo_init(&obj, sizeof(snd_seq_event_t), MIDI_EV_FIFO_SIZE);
 

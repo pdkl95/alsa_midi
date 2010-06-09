@@ -47,6 +47,18 @@ static VALUE Client_get_client_id(VALUE self)
   return INT2NUM(client->client_id);
 }
 
+static VALUE Client_set_rt_worker(VALUE self, VALUE worker)
+{
+  GET_CLIENT;
+  GET_RT_STRUCT(worker);
+
+  SET_IV(rt_worker, worker);
+  client->rt = rt;
+  rt->client_handle = client->handle;
+
+  return worker;
+}
+
 static void Client_free(alsa_midi_client_t *client)
 {
   free(client);
@@ -61,6 +73,7 @@ static VALUE Client_alloc(VALUE klass)
   client->name = DEFAULT_CLIENT_NAME;
   client->bpm  = DEFAULT_BPM;
   client->ppq  = DEFAULT_PPQ;
+  client->rt   = NULL;
 
   if (snd_seq_open(&(client->handle), "default", SND_SEQ_OPEN_DUPLEX, 0) < 0) {
     rb_raise(aMIDI_AlsaError, "Error opening ALSA sequencer.");
@@ -80,4 +93,5 @@ void Init_aMIDI_Client()
   ACCESSOR(Client, ppq);
 
   GETTER(Client, client_id);
+  SETTER(Client, rt_worker);
 }

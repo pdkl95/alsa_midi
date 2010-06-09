@@ -21,9 +21,10 @@ static aMIDI_inline ts_t add_timespec(ts_t a, ts_t b) {
 static void RTworker_period(rt_t *rt)
 {
   snd_seq_event_t *ev;  
-  write(1, ".", 1);
+  //write(1, ".", 1);
   FIFO_EACH(&rt->midi_tx_fifo, ev) {
-    write(1, "#", 1);
+    //write(1, "#", 1);
+    snd_seq_event_output_direct(rt->client_handle, ev);  
     fifo_write(&rt->free_ev_fifo, ev);
   }
 }
@@ -70,7 +71,7 @@ static VALUE RT_setup(VALUE self)
   DEBUG_MSG(self, "debug", res);
 
   rt->period.tv_sec  = 0;
-  rt->period.tv_nsec = MAX_NSEC / 4;
+  rt->period.tv_nsec = MAX_NSEC / (128);
 
   if (pthread_attr_init(&(rt->attr))) {
     rb_raise(aMIDI_TimerError, "Couldn't init pthread_attr object?!");
