@@ -12,6 +12,7 @@ module AlsaMIDI
         :lydian     => { :white_note => 'F', :spacing => 'T-T-T-s-T-T-s' },
         :mixolydian => { :white_note => 'G', :spacing => 'T-T-s-T-T-s-T' }
       }
+      LIST = [:ionian, :dorian, :phrygian, :lydian, :mixolydian, :aeolian, :locrian]
 
       attr_reader :name
     
@@ -58,13 +59,17 @@ module AlsaMIDI
       end
     end
 
-    def initialize(key='d', mode=:ionian)
+    def initialize(key='c', mode=:ionian)
       mode = :ionian  if mode == :major
       mode = :aeolian if mode == :minor
       
       @mode = Mode.new(mode)
       @key  = key.to_s.upcase
       @key_offset = CHROMA.index(@key)
+    end
+
+    def midi_note(off, octave=0)
+      57 + @mode.offsets_cumulative[off] + @key_offset + (12 * octave)
     end
 
     def offset_to_name(off)
@@ -77,11 +82,6 @@ module AlsaMIDI
 
     def inspect
       "#<#{self.class} \"#{@key}/#{@mode.name}\":[#{note_names.join(' ')}]>"
-    end
-
-    class << self
-      def C_ionian
-      end
     end
   end
 end
