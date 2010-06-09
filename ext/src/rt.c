@@ -20,7 +20,12 @@ static aMIDI_inline ts_t add_timespec(ts_t a, ts_t b) {
 
 static void RTworker_period(rt_t *rt)
 {
+  snd_seq_event_t *ev;  
   write(1, ".", 1);
+  FIFO_EACH(&rt->midi_tx_fifo, ev) {
+    write(1, "#", 1);
+    fifo_write(&rt->free_ev_fifo, ev);
+  }
 }
 
 static void *RTworker_thread(void *param)
@@ -110,8 +115,24 @@ static VALUE RT_running(VALUE self)
   }
 }
 
+static VALUE RT_send_midi(VALUE self)
+{
+  GET_RT;
+  fifo_write(&rt->midi_tx_fifo, (void *)3);
+}
+
 static void RT_free(rt_t *rt)
 {
+  snd_seq_event_t *ev;
+  FIFO_EACH(&rt->free_ev_fifo, ev) {
+    xfree(ev);
+  }
+  FIFO_EACH(&rt->midi_tx_fifo, ev) {
+    xfree(ev);
+  }
+  fifo_cleanup(&rt->free_ev_fifo);
+  fifo_cleanup(&rt->midi_tx_fifo);
+
   free(rt);
 }
 
@@ -119,6 +140,16 @@ static VALUE RT_alloc(VALUE klass)
 {
   rt_t *rt;
   VALUE self = Data_Make_Struct(klass, rt_t, NULL, RT_free, rt);
+
+  MIDI_EV_FIFO(rt->midi_tx_fifo);
+  MIDI_EV_FIFO(rt->free_ev_fifo);
+
+  int i;
+  for(i=0; i<(MIDI_EV_FIFO_SIZE-1); i++) {
+    snd_seq_event_t *ev = ALLOC(snd_seq_event_t);
+    fifo_write_ex(&rt->free_ev_fifo, ev);
+  }
+
   return self;
 }
 
@@ -129,6 +160,8 @@ void Init_aMIDI_RT()
   FUNC_X(RT, setup, 0);
   FUNC_X(RT, start, 0);
   FUNC_X(RT, stop,  0);
+
+  FUNC(RT, send_midi, 0);
 
   FUNC_Q(RT, running, 0);
 }

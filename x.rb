@@ -10,6 +10,13 @@ puts c.to_details
 e = AlsaMIDI::Event.new
 p = AlsaMIDI::Pattern.new
 
+sleep 2
+AlsaMIDI::RT.worker.send_midi
+sleep 2
+AlsaMIDI::RT.worker.send_midi
+AlsaMIDI::RT.worker.send_midi
+AlsaMIDI::RT.worker.send_midi
+AlsaMIDI::RT.worker.send_midi
 sleep 5
 AlsaMIDI::RT.worker.stop!
 exit

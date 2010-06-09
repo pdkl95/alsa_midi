@@ -92,6 +92,7 @@ extern VALUE aMIDI_AlsaError;
   GETTER(klass, name);        \
   SETTER(klass, name);
 
+#include "fifo.h"
 #include "rt.h"
 #include "pattern.h"
 #include "port.h"

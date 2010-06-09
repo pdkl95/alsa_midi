@@ -14,6 +14,8 @@ struct rt_worker {
 
   ts_t period;
   
+  fifo_t midi_tx_fifo;
+  fifo_t free_ev_fifo;
 };
 typedef struct rt_worker rt_t;
 
@@ -25,5 +27,9 @@ typedef struct rt_worker rt_t;
 
 
 extern void Init_aMIDI_RT();
+
+#define MIDI_EV_FIFO_SIZE 32
+#define MIDI_EV_FIFO(obj) \
+  fifo_init(&obj, sizeof(snd_seq_event_t), MIDI_EV_FIFO_SIZE);
 
 #endif /*RT_H*/
