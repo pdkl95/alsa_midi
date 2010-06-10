@@ -13,8 +13,6 @@ module AlsaMIDI
 
       setup_ports :tx, AlsaMIDI::Port::TX
       setup_ports :rx, AlsaMIDI::Port::RX
-
-      worker_start!
     end
 
     def inspect

@@ -66,10 +66,7 @@ module AlsaMIDI
       @mode = Mode.new(mode)
       @key  = key.to_s.upcase
       @key_offset = CHROMA.index(@key)
-    end
-
-    def midi_note(off, octave=0)
-      57 + @mode.offsets_cumulative[off] + @key_offset + (12 * octave)
+      @offsets = @mode.offsets_cumulative
     end
 
     def offset_to_name(off)
@@ -77,7 +74,7 @@ module AlsaMIDI
     end
 
     def note_names
-      @note_names ||= @mode.offsets_cumulative.map{ |off| offset_to_name(off) }
+      @note_names ||= @offsets.map{ |off| offset_to_name(off) }
     end
 
     def inspect

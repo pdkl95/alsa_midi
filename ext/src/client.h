@@ -1,6 +1,8 @@
 #ifndef ALSA_CLIENT_H
 #define ALSA_CLIENT_H
 
+#define EV_FIFO_SIZE 1024
+#define RT_WRK "AlsaMIDI::Client::RT> "
 #include <pthread.h>
 
 typedef struct timespec ts_t;
@@ -32,7 +34,5 @@ typedef struct alsa_midi_seq_client client_t;
 #define GET_CLIENT GET_CLIENT_STRUCT(self)
 
 void Init_aMIDI_Client();
-
-#define EV_FIFO_SIZE 1024
 
 #endif /*ALSA_CLIENT_H*/

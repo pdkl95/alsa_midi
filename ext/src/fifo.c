@@ -19,7 +19,11 @@ int fifo_write_ex(fifo_t *f, void *p)
 {
   int ret = fifo_write(f, p);
   if (ret == 0) {
-    rb_raise(aMIDI_Error, "Internal FIFO write failed?! Make bigger FIFOs?");
+    //rb_raise(aMIDI_Error, "Internal FIFO write failed?! Make bigger FIFOs?");
+    rb_bug("Ingernal FIFO write failed?!\n"
+           "***** This shouldn't happen! *****\n"
+           "Increase the internal FIFO size!\n"
+           "(probably EV_FIFO_SIZE in client.h)");
   }
   return ret;
 }

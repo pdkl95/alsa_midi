@@ -29,6 +29,7 @@ if have_header('sched.h')
   have_macro('SCHED_RR', 'sched.h')
   have_func('sched_setscheduler')
   have_func('sched_get_priority_max')
+  have_func('geteuid')
 else
   warn "Missing: sched.h - realtime priority setting disabled!"
 end

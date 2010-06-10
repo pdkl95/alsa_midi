@@ -15,8 +15,11 @@ end
 c = AlsaMIDI::Client.new :tx => 1, :rx => ['input_aaa', 'input_bbb']
 puts c.to_details
 
-e = AlsaMIDI::Event.new
-p = AlsaMIDI::Pattern.new
+ev      = AlsaMIDI::Ev.new
+ev_note = AlsaMIDI::Ev::Note.new
+
+puts "     ev: #{ev.etype.inspect}"
+puts "ev_note: #{ev_note.etype.inspect}"
 
 port = c.ports_tx.first
 

@@ -1,13 +1,22 @@
 #include "alsa_midi_seq.h"
 
+#ifdef HAVE_TIME_H
 #include <time.h>
+#else
+#error "Must have time.h for clock_nanosleep()!"
+#endif
 
 #ifdef HAVE_SCHED_H
 #include <sched.h>
 #endif
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #define MAX_NSEC 1000000000L
-static aMIDI_inline ts_t add_timespec(ts_t a, ts_t b) {
+static aMIDI_inline ts_t add_timespec(ts_t a, ts_t b)
+{
   ts_t x;
   x.tv_sec  = a.tv_sec  + b.tv_sec;
   x.tv_nsec = a.tv_nsec + b.tv_nsec ;
@@ -18,14 +27,36 @@ static aMIDI_inline ts_t add_timespec(ts_t a, ts_t b) {
   return x;
 }
 
-static void CWorker_period(client_t *client)
+static aMIDI_inline void CWorker_send_note(client_t *client, ev_t *ev)
 {
-  snd_seq_event_t *ev;  
-  write(1, ".", 1);
-  FIFO_EACH(client->ev_tx, ev) {
-    write(1, "#", 1);
-    snd_seq_event_output_direct(client->seq, ev);  
-    fifo_write(client->ev_free, ev);
+  snd_seq_event_t e;
+  snd_seq_ev_clear(&e);
+  snd_seq_ev_set_source(&e, ev->port_id);
+  snd_seq_ev_set_subs(&e);
+  snd_seq_ev_set_noteon(&e, ev->channel, midi_note_from_ev(ev), ev->velocity);
+  snd_seq_ev_set_direct(&e);
+  snd_seq_event_output_direct(client->seq, &e);
+}
+
+static aMIDI_inline void CWorker_process_ev(client_t *client, ev_t *ev)
+{
+  switch(ev->type) {
+  case EV_NOTE:
+    CWorker_send_note(client, ev);
+    break;
+  default:
+    break;
+  }
+  fifo_write(client->ev_free, ev);
+}
+
+static aMIDI_inline void CWorker_period(client_t *client)
+{
+  ev_t *ev;  
+  //write(1, ".", 1);
+  FIFO_FLUSH(client->ev_tx, ev) {
+    //write(1, "#", 1);
+    CWorker_process_ev(client, ev);
   }
 }
 
@@ -36,15 +67,21 @@ static void *CWorker_thread(void *param)
   client_t *client = (client_t *)param;
   client->thread_exit_status = 0;
   
-#ifdef HAVE_SCHED_SETSCHEDULER
-#ifdef HAVE_SCHED_GET_PRIORITY_MAX
+#ifdef USE_SETSCHEDULER
   // Set realtime priority for this thread
-  struct sched_param sp;
-  sp.sched_priority = sched_get_priority_max(SCHED_RR);
-  if (sched_setscheduler(0, SCHED_RR, &sp) < 0) {
-    perror("sched_setscheduler(SCHED_RR)");
+  if(!geteuid()) {
+    struct sched_param sp;
+    memset(&sp, 0, sizeof(sp));
+    sp.sched_priority = sched_get_priority_max(SCHED_FIFO);
+    if (sched_setscheduler(0, SCHED_FIFO, &sp) < 0) {
+      perror(RT_WRK "sched_setscheduler(SCHED_FIFO)");
+      fprintf(stderr, RT_WRK "using normal (non-realtime) priority!\n");
+    }
+  } else {
+    fprintf(stderr, RT_WRK "Not root! Skipping realtime priority scheduler!\n");
   }
-#endif
+#else
+# warning "Disabling sched_setscheduler() because we are missing features!"
 #endif   
 
   clock_gettime(CLOCK_MONOTONIC, &time);
@@ -119,31 +156,8 @@ static VALUE Client_get_name(VALUE self)
   return client->name ? rb_str_new2(client->name) : Qnil;
 }
 
-static VALUE Client_set_ppq(VALUE self, VALUE new_ppq)
-{
-  GET_CLIENT;
-  client->ppq = NUM2INT(new_ppq);
-  return new_ppq;
-}
-
-static VALUE Client_get_ppq(VALUE self)
-{
-  GET_CLIENT;
-  return INT2NUM(client->ppq);
-}
-
-static VALUE Client_set_bpm(VALUE self, VALUE new_bpm)
-{
-  GET_CLIENT;
-  client->bpm = NUM2INT(new_bpm);
-  return new_bpm;
-}
-
-static VALUE Client_get_bpm(VALUE self)
-{
-  GET_CLIENT;
-  return INT2NUM(client->bpm);
-}
+STD_INT_ACCESSOR(Client, client_t, ppq);
+STD_INT_ACCESSOR(Client, client_t, bpm);
 
 static VALUE Client_get_client_id(VALUE self)
 {
@@ -151,26 +165,23 @@ static VALUE Client_get_client_id(VALUE self)
   return INT2NUM(client->client_id);
 }
 
-static void Client_free(client_t *client)
+static void Client_free_pre(client_t *client)
 {
-  snd_seq_event_t *ev;
-  FIFO_EACH(client->ev_free, ev) {
+  ev_t *ev;
+  FIFO_FLUSH(client->ev_free, ev) {
     xfree(ev);
   }
-  FIFO_EACH(client->ev_tx, ev) {
+  FIFO_FLUSH(client->ev_tx, ev) {
     xfree(ev);
   }
   fifo_free(client->ev_free);
   fifo_free(client->ev_tx);
-  xfree(client);
 }
 
-static VALUE Client_alloc(VALUE klass)
+static void Client_new_preinit(VALUE self, client_t *client)
 {
   int i;
-  snd_seq_event_t *ev;
-  client_t *client = ALLOC(client_t);
-  VALUE self = Data_Wrap_Struct(klass, NULL, Client_free, client);
+  ev_t *ev;
 
   client->name    = DEFAULT_CLIENT_NAME;
   client->bpm     = DEFAULT_BPM;
@@ -179,7 +190,7 @@ static VALUE Client_alloc(VALUE klass)
   client->ev_free = fifo_alloc(EV_FIFO_SIZE);
 
   for(i=0; i<(EV_FIFO_SIZE-1); i++) {
-    ev = ALLOC(snd_seq_event_t);
+    ev = ALLOC(ev_t);
     fifo_write_ex(client->ev_free, ev);
   }
 
@@ -188,13 +199,18 @@ static VALUE Client_alloc(VALUE klass)
     exit(1);
   }
   client->client_id = snd_seq_client_id(client->seq);
-
-  return self;
 }
+
+static void Client_new_postinit(VALUE self, client_t *client)
+{
+  rb_funcall(self, rb_intern("worker_start!"), 0);
+}
+
+STD_ALLOC_SETUP(Client, client_t);
 
 void Init_aMIDI_Client()
 {
-  CUSTOM_ALLOC(Client);
+  CLASS_NEW(Client);
   
   FUNC_X(Client, worker_start, 0);
   FUNC_X(Client, worker_stop,  0);

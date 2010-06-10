@@ -79,24 +79,23 @@ static VALUE Port_each_connected(VALUE self)
   return INT2NUM(count);
 }
 
-static snd_seq_event_t *get_ev(client_t *client, int port_id)
+static ev_t *get_ev(client_t *client, int port_id, int ch)
 {
-  snd_seq_event_t *ev = fifo_read(client->ev_free);
+  ev_t *ev = fifo_read(client->ev_free);
   if (ev == NULL) {
     rb_raise(aMIDI_Error, "No free snd_seq_event_t objects on the FIFO!");
     return NULL;
   }
   
-  snd_seq_ev_clear(ev);
-  snd_seq_ev_set_source(ev, port_id);
-  snd_seq_ev_set_subs(ev);
+  ev->mem     = EV_MEM_FIFO;
+  ev->port_id = port_id;
+  ev->channel = ch;
 
   return ev;
 }
 
-static void send_ev(client_t *client, snd_seq_event_t *ev)
+static void send_ev(client_t *client, ev_t *ev)
 {
-  snd_seq_ev_set_direct(ev);
   fifo_write(client->ev_tx, ev);
 }
 
@@ -105,10 +104,11 @@ static VALUE PortTX_note_on(VALUE self, VALUE ch, VALUE note, VALUE vel)
   CLIENT_PTR;
   IV_INT(port_id);
 
-  snd_seq_event_t *ev = get_ev(client, port_id);
-  snd_seq_ev_set_noteon(ev, NUM2INT(ch), NUM2INT(note), NUM2INT(vel));
-  send_ev(client, ev);
+  ev_t *ev = get_ev(client, port_id, NUM2INT(ch));
+  ev->note     = NUM2INT(note);
+  ev->velocity = NUM2INT(vel);
 
+  send_ev(client, ev);
   return self;
 }
 

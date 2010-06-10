@@ -20,7 +20,7 @@ void *fifo_read(fifo_t *f);
 #define FIFO_NEXT_RD(f) FIFO_NEXT(f, f->rd)
 #define FIFO_NEXT_WR(f) FIFO_NEXT(f, f->wr)
 
-#define FIFO_EACH(f, p)             \
+#define FIFO_FLUSH(f, p)            \
   while((p = fifo_read(f)) != NULL) \
 
 #endif /*FIFO_H*/
