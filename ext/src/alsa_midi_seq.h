@@ -189,6 +189,8 @@ extern VALUE aMIDI_AlsaError;
   STD_FREE_CALLBACKS(klass, type_t); \
   STD_NEW_CALLBACKS(klass, type_t);
 
+typedef struct timespec ts_t;
+
 #include "fifo.h"
 #include "scale.h"
 #include "ev.h"

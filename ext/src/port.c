@@ -99,35 +99,49 @@ static void send_ev(client_t *client, ev_t *ev)
   fifo_write(client->ev_tx, ev);
 }
 
-static VALUE PortTX_note_on(VALUE self, VALUE ch, VALUE note, VALUE vel)
+static void send_note_common(int flags, ts_t *delay,
+                             VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
   CLIENT_PTR;
   IV_INT(port_id);
 
   ev_t *ev = get_ev(client, port_id, NUM2INT(ch));
+  ev->type     = EV_NOTE;
+  ev->mem      = EV_MEM_FIFO;
   ev->note     = NUM2INT(note);
   ev->velocity = NUM2INT(vel);
+  ev->flags    = flags | EV_FLAG_STATIC;
+
+  if (delay) {
+    ev->delay = *delay;
+    /*ev->delay.tv_sec  = delay->tv_sec;
+      ev->delay.tv_nsec = delay->tv_nsec;*/
+  }
 
   send_ev(client, ev);
+}
+
+static VALUE PortTX_note_on(VALUE self, VALUE ch, VALUE note, VALUE vel)
+{
+  send_note_common(EV_FLAG_NOTEON, NULL,
+                   self, ch, note, vel);
   return self;
 }
 
 static VALUE PortTX_note_off(VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
-  CLIENT_PTR;
-  IV_INT(port_id);
-
-  snd_seq_event_t *ev = get_ev(client, port_id);
-  snd_seq_ev_set_noteoff(ev, NUM2INT(ch), NUM2INT(note), NUM2INT(vel));
-  send_ev(client, ev);
-
+  send_note_common(EV_FLAG_NOTEOFF, NULL,
+                   self, ch, note, vel);
   return self;
 }
 
-static VALUE PortTX_note(VALUE self, VALUE ch, VALUE note, VALUE vel)
+static VALUE PortTX_note(VALUE self, VALUE ch, VALUE note, VALUE vel, VALUE del)
 {
-  PortTX_note_on(self, ch, note, vel);
-  PortTX_note_off(self, ch, note, vel);
+  ts_t delay;
+  delay.tv_sec = 0;
+  delay.tv_nsec = NUM2INT(del);
+  send_note_common(EV_FLAG_NOTE, &delay,
+                   self, ch, note, vel);
   return self;
 }
 
@@ -140,7 +154,7 @@ void Init_aMIDI_Port()
 
   FUNC_X(PortTX, note_on,  3);
   FUNC_X(PortTX, note_off, 3);
-  FUNC_X(PortTX, note,     3);
+  FUNC_X(PortTX, note,     4);
 
   FUNC(Port,   each_connected, 0);
 }

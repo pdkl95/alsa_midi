@@ -26,7 +26,7 @@ end
 end
 
 if have_header('sched.h')
-  have_macro('SCHED_RR', 'sched.h')
+  have_macro('SCHED_FIFO', 'sched.h')
   have_func('sched_setscheduler')
   have_func('sched_get_priority_max')
   have_func('geteuid')

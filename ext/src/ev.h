@@ -4,15 +4,19 @@
 #define EV_NULL 0
 #define EV_NOTE 1
 
-#define EV_FLAG_NOTEON  0x0001
-#define EV_FLAG_NOTEOFF 0x0002
-#define EV_FLAG_NOTE    (EV_SUB_NOTEON | EV_SUB_NOTEOFF)
-#define EV_FLAG_RAWNOTE 0x0010
-#define EV_FLAG_TNOTE   0x0020
+#define EV_FLAG_NOTEON    0x0001
+#define EV_FLAG_NOTEOFF   0x0002
+#define EV_FLAG_NOTE      (EV_FLAG_NOTEON | EV_FLAG_NOTEOFF)
+#define EV_FLAG_STATIC    0x0010
+#define EV_FLAG_TRANSPOSE 0x0020
+
 #define EV_MEM_RUBY 1
 #define EV_MEM_FIFO 2
 
 struct seq_event {
+  struct seq_event *next;
+  struct seq_event *prev;
+
   int type;
   int flags;
   int mem;
@@ -27,6 +31,9 @@ struct seq_event {
   int note_octave;
 
   int velocity;
+
+  ts_t delay;
+  ts_t alarm;
 };
 typedef struct seq_event ev_t;
 

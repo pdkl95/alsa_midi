@@ -5,7 +5,8 @@
 #define RT_WRK "AlsaMIDI::Client::RT> "
 #include <pthread.h>
 
-typedef struct timespec ts_t;
+#define GETTIME_CLOCK CLOCK_MONOTONIC
+#define  NSLEEP_CLOCK CLOCK_MONOTONIC
 
 struct alsa_midi_seq_client {
   snd_seq_t *seq;
@@ -16,9 +17,11 @@ struct alsa_midi_seq_client {
   int            thread_running;
   int            thread_exit_status;
   ts_t           thread_period;
+  ev_t          *thread_delay_pool;
 
   fifo_t *ev_free;
   fifo_t *ev_tx;
+  fifo_t *ev_return;
 
   int client_id;
   int ppq; // Pulses Per Quarter

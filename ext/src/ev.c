@@ -2,7 +2,11 @@
 
 aMIDI_inline int midi_note_from_ev(ev_t *ev)
 {
-  return midi_note_in_scale(ev->scale, ev->note_offset, ev->note_octave);
+  if (ev->flags & EV_FLAG_TRANSPOSE) {
+    return midi_note_in_scale(ev->scale, ev->note_offset, ev->note_octave);
+  } else {
+    return ev->note;
+  }
 }
 
 static VALUE Ev_get_etype(VALUE self)

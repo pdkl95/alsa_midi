@@ -18,9 +18,6 @@ puts c.to_details
 ev      = AlsaMIDI::Ev.new
 ev_note = AlsaMIDI::Ev::Note.new
 
-puts "     ev: #{ev.etype.inspect}"
-puts "ev_note: #{ev_note.etype.inspect}"
-
 port = c.ports_tx.first
 
 sleep 4
@@ -32,7 +29,7 @@ port.note_off! 1, 58, 22
 
 sleep 1
 
-port.note! 10, 66, 121
+port.note! 10, 66, 121, 900000000
 
 
-sleep 2000
+#sleep 2000
