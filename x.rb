@@ -32,4 +32,4 @@ sleep 1
 port.note! 10, 66, 121, 900000000
 
 
-#sleep 2000
+sleep 2000

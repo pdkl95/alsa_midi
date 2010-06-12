@@ -15,11 +15,13 @@ alsa_midi_require 'facets/kernel/returning'
 
 module AlsaMIDI
   DEFAULT_CLIENT_OPT = {
+    :clocks_per_beat   => 128,
+    :beats_per_measure => 4,
+
     :name => "AlsaMIDI",
-    :bpm  => 120,
-    :tx   => 2,
-    :rx   => 2,
-    :queue_length => 64
+    :tx   => 1,
+    :rx   => 0,
+    :bpm  => 120
   }
 end
 

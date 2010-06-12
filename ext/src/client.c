@@ -38,6 +38,9 @@ static aMIDI_inline int cmp_timespec(ts_t a, ts_t b)
   }
 }
 
+/*************************************************************************
+ * Worker Thread
+ */
 static aMIDI_inline void CWorker_send_note(client_t *client, ev_t *ev)
 {
   snd_seq_event_t e;
@@ -129,9 +132,9 @@ static void *CWorker_thread(void *param)
 
     if (cmp_timespec(time_now, time_next) > 0) {
       fprintf(stderr, RT_WRK "*** RT Deadline miss! ***\n");
-      fprintf(stderr, RT_WRK "  --  now: %ld s, %ld ns",
+      fprintf(stderr, RT_WRK "      now: %ld s, %ld ns\n",
               time_now.tv_sec, time_now.tv_nsec);
-      fprintf(stderr, RT_WRK "  -- next: %ld s, %ld ns",
+      fprintf(stderr, RT_WRK "     next: %ld s, %ld ns\n",
               time_next.tv_sec, time_next.tv_nsec);
     }
 
@@ -162,12 +165,29 @@ static void *CWorker_thread(void *param)
       }
       ev = ev->next;
     }
+
+    /* advance the song pointers */
+    client->clock++;
+    if (client->clock >= client->clocks_per_beat) {
+      client->clock = 0;
+      client->beat++;
+      if (client->beat >= client->beats_per_measure) {
+        client->beat = 0;
+        client->measure++;
+        write(1,"B",1);
+      } else {
+        write(1,"b",1);
+      }
+    }
   }
 
   pthread_exit(&client->thread_exit_status);
   return NULL;
 }
 
+/******************************************************************
+ * ruby Client interface
+ */
 static VALUE Client_worker_start(VALUE self)
 {
   GET_CLIENT;
@@ -177,9 +197,6 @@ static VALUE Client_worker_start(VALUE self)
   VALUE res = PRINTF2("Timer Resolution: %d s, %d ns",
                       INT2NUM(tv.tv_sec), INT2NUM(tv.tv_nsec));
   DEBUG_MSG(self, "debug", res);
-
-  client->thread_period.tv_sec  = 0;
-  client->thread_period.tv_nsec = MAX_NSEC / (128);
 
   if (pthread_attr_init(&client->thread_attr)) {
     rb_raise(aMIDI_TimerError, "Couldn't init pthread_attr object?!");
@@ -228,8 +245,35 @@ static VALUE Client_get_name(VALUE self)
   return client->name ? rb_str_new2(client->name) : Qnil;
 }
 
-STD_INT_ACCESSOR(Client, client_t, ppq);
-STD_INT_ACCESSOR(Client, client_t, bpm);
+STD_INT_ACCESSOR(Client, client_t, clocks_per_beat);
+STD_INT_ACCESSOR(Client, client_t, beats_per_measure);
+
+STD_INT_GETTER(Client, client_t, clock);
+STD_INT_GETTER(Client, client_t, beat);
+STD_INT_GETTER(Client, client_t, measure);
+STD_INT_GETTER(Client, client_t, bpm);
+
+static void set_tempo(client_t *client, int new_bpm)
+{
+  client->bpm = new_bpm;
+  client->clocks_per_minute = client->clocks_per_beat * client->bpm;
+  client->clocks_per_second = (float)(client->clocks_per_minute) / 60.0f;
+  client->thread_period.tv_nsec = MAX_NSEC / (long)(client->clocks_per_second);
+
+  printf("bpm = %d\n", client->bpm);
+  printf("cpb = %d\n", client->clocks_per_beat);
+  printf("cpm = %d\n", client->clocks_per_minute);
+  printf("cps = %f\n", client->clocks_per_second);
+  printf("nsec = %ld\n", client->thread_period.tv_nsec);
+}
+
+static VALUE Client_set_bpm(VALUE self, VALUE new_bpm)
+{
+  GET_CLIENT;
+  set_tempo(client, NUM2INT(new_bpm));
+  return new_bpm;
+}
+
 
 static VALUE Client_get_client_id(VALUE self)
 {
@@ -255,13 +299,17 @@ static void Client_new_preinit(VALUE self, client_t *client)
   int i;
   ev_t *ev;
 
-  client->name = DEFAULT_CLIENT_NAME;
-  client->bpm  = DEFAULT_BPM;
-  client->ppq  = DEFAULT_PPQ;
+  client->name              = DEFAULT_CLIENT_NAME;
+  client->clocks_per_beat   = DEFAULT_CLOCKS_PER_BEAT;
+  client->beats_per_measure = DEFAULT_BEATS_PER_MEASURE;
 
   client->ev_tx     = fifo_alloc(EV_FIFO_SIZE);
   client->ev_free   = fifo_alloc(EV_FIFO_SIZE);
   client->ev_return = fifo_alloc(EV_FIFO_SIZE);
+
+  client->clock   = 0;
+  client->beat    = 0;
+  client->measure = 0;
 
   client->thread_delay_pool = NULL;
 
@@ -275,6 +323,8 @@ static void Client_new_preinit(VALUE self, client_t *client)
     exit(1);
   }
   client->client_id = snd_seq_client_id(client->seq);
+
+  set_tempo(client, DEFAULT_TEMPO);
 }
 
 static void Client_new_postinit(VALUE self, client_t *client)
@@ -294,8 +344,12 @@ void Init_aMIDI_Client()
   FUNC_Q(Client, running, 0);
 
   ACCESSOR(Client, name);
+  ACCESSOR(Client, clocks_per_beat);
+  ACCESSOR(Client, beats_per_measure);
   ACCESSOR(Client, bpm);
-  ACCESSOR(Client, ppq);
 
+  GETTER(Client, clock);
+  GETTER(Client, beat);
+  GETTER(Client, measure);
   GETTER(Client, client_id);
 }

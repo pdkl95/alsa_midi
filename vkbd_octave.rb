@@ -189,9 +189,7 @@ class GUI
     midi_note = @scale.midi_note(offset)
     note_name = @scale.note_names[offset]
     puts "note: #{offset}, #{note_name} (MIDI_NOTE == #{midi_note})"
-    $port.note_on!  0, midi_note, 127
-    sleep 0.25
-    $port.note_off! 0, midi_note, 127
+    $port.note!  0, midi_note, 127, 700000000
   end
 
   def initialize

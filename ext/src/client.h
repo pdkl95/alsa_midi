@@ -24,9 +24,19 @@ struct alsa_midi_seq_client {
   fifo_t *ev_return;
 
   int client_id;
-  int ppq; // Pulses Per Quarter
+
+  // meter
+  int clocks_per_beat;
+  int beats_per_measure;
+  int clock;
+  int beat;
+  int measure;
+
+  // tempo
   int bpm;
-  int tempo;
+  int clocks_per_minute;
+  float clocks_per_second;
+
 };
 typedef struct alsa_midi_seq_client client_t;
 

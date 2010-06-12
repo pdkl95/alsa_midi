@@ -8,19 +8,21 @@ module AlsaMIDI
       @ports_tx = []
       @ports_rx = []
 
-      self.name = @opt[:name]
-      self.bpm  = @opt[:bpm]
+      self.name              = @opt[:name]
+      self.clocks_per_beat   = @opt[:clocks_per_beat]
+      self.beats_per_measure = @opt[:beats_per_measure]
+      self.bpm               = @opt[:bpm]
 
       setup_ports :tx, AlsaMIDI::Port::TX
       setup_ports :rx, AlsaMIDI::Port::RX
     end
 
     def inspect
-      "#<AlsaMIDI::Client name=#{name.inspect}, bpm=#{bpm}, tx=[#{tx_port_str}], rx=[#{rx_port_str}]>"
+      "#<AlsaMIDI::Client name=#{name.inspect}, clock=#{clocks_per_beat}:#{beats_per_measure}, tx=[#{tx_port_str}], rx=[#{rx_port_str}]>"
     end
 
     def to_s
-      "AlsaMIDI::Client[#{name.inspect}]{ #{bpm} bpm, #{@ports_tx.length} tx, #{@ports_rx.length} rx }"
+      "AlsaMIDI::Client[#{name.inspect}]{ #{clocks_per_beat}:#{beats_per_measure} clock, #{@ports_tx.length} tx, #{@ports_rx.length} rx }"
     end
     
     def to_details
