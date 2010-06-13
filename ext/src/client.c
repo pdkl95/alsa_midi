@@ -174,9 +174,9 @@ static void *CWorker_thread(void *param)
       if (client->beat >= client->beats_per_measure) {
         client->beat = 0;
         client->measure++;
-        write(1,"B",1);
+        //write(1,"M",1);
       } else {
-        write(1,"b",1);
+        //write(1,"b",1);
       }
     }
   }
