@@ -16,7 +16,7 @@ static VALUE Looper_set_note(VALUE self, VALUE n, VALUE d)
   int i;
 
   for (i=0; i<looper->seq_len; i++) {
-    looper->seq_ev[i].note = note + i;
+    looper->seq_ev[i].note = note;
     looper->seq_ev[i].velocity = 127;
     looper->seq_ev[i].delay.tv_sec = 0;
     looper->seq_ev[i].delay.tv_sec = duration;
