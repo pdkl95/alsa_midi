@@ -11,6 +11,7 @@
 struct alsa_midi_seq_client {
   snd_seq_t *seq;
   char      *name;
+  int        client_id;
 
   pthread_t      thread;
   pthread_attr_t thread_attr;
@@ -23,13 +24,15 @@ struct alsa_midi_seq_client {
   fifo_t *ev_tx;
   fifo_t *ev_return;
 
-  int client_id;
+  // auto-run looping widgets
+  looper_t *looper_widgets;
 
   // meter
   int clocks_per_beat;
   int beats_per_measure;
   int clock;
   int beat;
+  int beat_total;
   int measure;
 
   // tempo

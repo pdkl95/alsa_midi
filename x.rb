@@ -12,13 +12,18 @@ require 'alsa_midi'
 end
 #exit
 
-c = AlsaMIDI::Client.new :tx => 1, :rx => ['input_aaa', 'input_bbb']
+c = AlsaMIDI::Client.new({ :tx => 1,
+                           :rx => ['input_aaa', 'input_bbb'],
+                           :clocks_per_beat => 4
+                         })
 puts c.to_details
 
 ev      = AlsaMIDI::Ev.new
 ev_note = AlsaMIDI::Ev::Note.new
 
 port = c.ports_tx.first
+loop = port.create_seq16!(3)
+loop.set_note 10, 300000000
 
 sleep 4
 port.note_on! 0, 55, 123

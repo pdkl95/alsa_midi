@@ -15,14 +15,14 @@
 #endif
 
 #define MAX_NSEC 1000000000L
-static aMIDI_inline ts_t add_timespec(ts_t a, ts_t b)
+static aMIDI_inline ts_t add_timespec(ts_t *a, ts_t b)
 {
   ts_t x;
-  x.tv_sec  = a.tv_sec  + b.tv_sec;
-  x.tv_nsec = a.tv_nsec + b.tv_nsec ;
-  if (x.tv_nsec >= MAX_NSEC) {
-    x.tv_sec  += 1;
-    x.tv_nsec = x.tv_nsec - MAX_NSEC;
+  a->tv_sec  += b.tv_sec;
+  a->tv_nsec += b.tv_nsec;
+  if (a->tv_nsec >= MAX_NSEC) {
+    a->tv_sec  += 1;
+    a->tv_nsec -= MAX_NSEC;
   }
   return x;
 }
@@ -62,7 +62,7 @@ static aMIDI_inline void CWorker_send_note(client_t *client, ev_t *ev)
 static aMIDI_inline void CWorker_schedule_ev(client_t *client, ev_t *ev)
 {
   clock_gettime(GETTIME_CLOCK, &ev->alarm);
-  ev->alarm = add_timespec(ev->alarm, ev->delay);
+  add_timespec(&ev->alarm, ev->delay);
   if (client->thread_delay_pool) {
     client->thread_delay_pool->prev = ev;
   }
@@ -100,10 +100,36 @@ static void CWorker_process_ev(client_t *client, ev_t *ev)
   }
 }
 
+static void CWorker_process_looper(client_t *client, looper_t *looper)
+{
+  int i;
+  ev_t *ev;
+
+  switch(looper->type) {
+  case LOOPER_SEQ16:
+    if (client->clock == 0) {
+      //write(1, "N", 1);
+      ev = LOOPER_EV_AT_BEAT(looper, client->beat_total);
+      if (!ev->off) {
+        ev->flags = EV_FLAG_NOTEON | EV_FLAG_STATIC;
+        CWorker_send_note(client, ev);
+      }
+    }
+    if (client->clock == 2) {
+      //write(1, "X", 1);
+      ev = LOOPER_EV_AT_BEAT(looper, client->beat_total);
+      ev->flags = EV_FLAG_NOTEOFF | EV_FLAG_STATIC;
+      CWorker_send_note(client, ev);
+    }
+    break;
+  }
+}
+
 static void *CWorker_thread(void *param)
 {
   int ret;
   ev_t *ev;
+  looper_t *loop;
   ts_t time_next, time_now;
   client_t *client = (client_t *)param;
   client->thread_exit_status = 0;
@@ -128,7 +154,7 @@ static void *CWorker_thread(void *param)
   clock_gettime(GETTIME_CLOCK, &time_next);
   while(client->thread_running) {
     clock_gettime(GETTIME_CLOCK, &time_now);
-    time_next = add_timespec(time_next, client->thread_period);
+    add_timespec(&time_next, client->thread_period);
 
     if (cmp_timespec(time_now, time_next) > 0) {
       fprintf(stderr, RT_WRK "*** RT Deadline miss! ***\n");
@@ -166,11 +192,20 @@ static void *CWorker_thread(void *param)
       ev = ev->next;
     }
 
+    /* process all looper widgets */
+    loop = client->looper_widgets;
+    while(loop) {
+      //write(1,"L",1);
+      CWorker_process_looper(client, loop);
+      loop = loop->next;
+    }
+
     /* advance the song pointers */
     client->clock++;
     if (client->clock >= client->clocks_per_beat) {
       client->clock = 0;
       client->beat++;
+      client->beat_total++;
       if (client->beat >= client->beats_per_measure) {
         client->beat = 0;
         client->measure++;
@@ -258,13 +293,16 @@ static void set_tempo(client_t *client, int new_bpm)
   client->bpm = new_bpm;
   client->clocks_per_minute = client->clocks_per_beat * client->bpm;
   client->clocks_per_second = (float)(client->clocks_per_minute) / 60.0f;
+  client->thread_period.tv_sec = 0;
   client->thread_period.tv_nsec = MAX_NSEC / (long)(client->clocks_per_second);
 
+#if 0
   printf("bpm = %d\n", client->bpm);
   printf("cpb = %d\n", client->clocks_per_beat);
   printf("cpm = %d\n", client->clocks_per_minute);
   printf("cps = %f\n", client->clocks_per_second);
   printf("nsec = %ld\n", client->thread_period.tv_nsec);
+#endif
 }
 
 static VALUE Client_set_bpm(VALUE self, VALUE new_bpm)
@@ -310,8 +348,10 @@ static void Client_new_preinit(VALUE self, client_t *client)
   client->clock   = 0;
   client->beat    = 0;
   client->measure = 0;
+  client->beat_total = 0;
 
   client->thread_delay_pool = NULL;
+  client->looper_widgets    = NULL;
 
   for(i=0; i<(EV_FIFO_SIZE-1); i++) {
     ev = ALLOC(ev_t);

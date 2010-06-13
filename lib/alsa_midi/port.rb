@@ -42,6 +42,10 @@ module AlsaMIDI
       end
     end
 
+    def create_seq16!(midi_channel)
+      Looper::Seq16.new(@client, self, midi_channel)
+    end
+
     def to_s
       list = connected_clients
       str = "Port::#{type_name}[#{name.inspect}, #{port_id_string}"

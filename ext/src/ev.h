@@ -10,8 +10,9 @@
 #define EV_FLAG_STATIC    0x0010
 #define EV_FLAG_TRANSPOSE 0x0020
 
-#define EV_MEM_RUBY 1
-#define EV_MEM_FIFO 2
+#define EV_MEM_RUBY   1
+#define EV_MEM_FIFO   2
+#define EV_MEM_LOOPER 3
 
 struct seq_event {
   struct seq_event *next;
@@ -34,6 +35,8 @@ struct seq_event {
 
   ts_t delay;
   ts_t alarm;
+
+  int off;
 };
 typedef struct seq_event ev_t;
 
@@ -42,6 +45,8 @@ typedef struct seq_event ev_t;
   Data_Get_Struct(obj, ev_t, ev);
 
 #define GET_EV GET_EV_STRUCT(self)
+
+#define EV_ACTIVE(ev) ((ev) && !(ev)->off)
 
 int midi_note_from_ev(ev_t *ev);
 

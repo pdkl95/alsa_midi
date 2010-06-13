@@ -107,15 +107,14 @@ static void send_note_common(int flags, ts_t *delay,
 
   ev_t *ev = get_ev(client, port_id, NUM2INT(ch));
   ev->type     = EV_NOTE;
-  ev->mem      = EV_MEM_FIFO;
   ev->note     = NUM2INT(note);
   ev->velocity = NUM2INT(vel);
   ev->flags    = flags | EV_FLAG_STATIC;
+  ev->off      = 0;
 
   if (delay) {
-    ev->delay = *delay;
-    /*ev->delay.tv_sec  = delay->tv_sec;
-      ev->delay.tv_nsec = delay->tv_nsec;*/
+    ev->delay.tv_sec  = delay->tv_sec;
+    ev->delay.tv_nsec = delay->tv_nsec;
   }
 
   send_ev(client, ev);

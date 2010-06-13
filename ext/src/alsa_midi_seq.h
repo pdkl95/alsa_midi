@@ -46,6 +46,7 @@ extern VALUE aMIDI_PortTX;
 extern VALUE aMIDI_PortRX;
 extern VALUE aMIDI_Client;
 extern VALUE aMIDI_Looper;
+extern VALUE aMIDI_LooperSeq16;
 
 extern VALUE aMIDI_Error;
 extern VALUE aMIDI_TimerError;
@@ -55,6 +56,8 @@ extern VALUE aMIDI_AlsaError;
 #define KLASS(name) KLASS_UNDER(rb_cObject, name)
 #define INCLUDE(klass, name) rb_include_module(klass, KLASS(name))
 #define SYM(str) ID2SYM(rb_intern(str))
+
+#define FALSEY(x) ((x) == Qnil || (x) == Qfalse)
 
 #define OBJ_GET_IV(obj, iv_name)      rb_iv_get(obj, "@" #iv_name)
 #define OBJ_SET_IV(obj, iv_name, val) rb_iv_set(obj, "@" #iv_name, val)
@@ -126,6 +129,11 @@ extern VALUE aMIDI_AlsaError;
   GETTER(klass, name);        \
   SETTER(klass, name);
 
+#define GETARY(klass) \
+  rb_define_method(aMIDI_##klass, "[]", klass##_get_as_array, 1);
+#define SETARY(klass) \
+  rb_define_method(aMIDI_##klass, "[]=", klass##_set_as_array, 2);
+
 #define STD_INT_GETTER(klass, type_t, field)     \
   static VALUE klass##_get_##field(VALUE self) { \
     type_t *p;                                   \
@@ -195,8 +203,8 @@ typedef struct timespec ts_t;
 #include "scale.h"
 #include "ev.h"
 #include "pat.h"
+#include "looper.h"
 #include "port.h"
 #include "client.h"
-#include "looper.h"
 
 #endif /*ALSA_MIDI_H*/

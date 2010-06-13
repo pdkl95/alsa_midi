@@ -11,6 +11,7 @@ VALUE aMIDI_PortTX;
 VALUE aMIDI_PortRX;
 VALUE aMIDI_Client;
 VALUE aMIDI_Looper;
+VALUE aMIDI_LooperSeq16;
 
 VALUE aMIDI_Error;
 VALUE aMIDI_TimerError;
@@ -38,6 +39,7 @@ void Init_alsa_midi_seq()
   SUB(Ev, Note);
   SUB(Port, TX);
   SUB(Port, RX);
+  SUB(Looper, Seq16);
 #undef SUB
 
   aMIDI_Error = rb_define_class_under(aMIDI, "Error", rb_eRuntimeError);

@@ -6,8 +6,17 @@ require 'gtk2'
 $LOAD_PATH << File.dirname(__FILE__) + '/lib'
 require 'alsa_midi'
 
-$client = AlsaMIDI::Client.new :tx => 1
+$client = AlsaMIDI::Client.new :tx => 1, :clocks_per_beat => 4
+
 $port = $client.ports_tx.first
+$seq = {}
+[[:bass, 36], [:snare, 38], [:highhat, 42], [:crash, 49]
+].each do |x|
+  name = x.first
+  $seq[name] = $port.create_seq16!(10)
+  $seq[name].set_note(x.last, 300000000)
+end
+
 puts "MIDI transmit on: #{$port}"
 
 #########################################################################
@@ -156,6 +165,7 @@ class GUI
           b.signal_connect('clicked') do
             status = b.active? ? 'ON' : 'OFF'
             puts "#{name}[#{x}] = #{status}"
+            $seq[name][x.to_i] = b.active?
           end
           grid.attach_defaults(b, x, x+1, y, y+1)
         end
@@ -178,6 +188,7 @@ class GUI
     puts "set scale: #{@key}/#{@mode}"
     @scale = AlsaMIDI::Scale.new(@key, @mode)
     puts @scale.inspect
+    
     if @vkbd_buttons
       @vkbd_buttons.each_with_index do |b,idx|
         b.label = @scale.note_names[idx]
