@@ -14,7 +14,8 @@ VALUE aMIDI_Looper;
 VALUE aMIDI_LooperSeq16;
 
 VALUE aMIDI_Error;
-VALUE aMIDI_TimerError;
+VALUE aMIDI_ParamError;
+VALUE aMIDI_CWorkerError;
 VALUE aMIDI_AlsaError;
 
 void Init_alsa_midi_seq()
@@ -46,7 +47,8 @@ void Init_alsa_midi_seq()
 
 #define E(name) \
   aMIDI_##name = rb_define_class_under(aMIDI, #name, aMIDI_Error);
-  E(TimerError);
+  E(ParamError);
+  E(CWorkerError);
   E(AlsaError);
 #undef E
 

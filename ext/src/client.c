@@ -234,13 +234,15 @@ static VALUE Client_worker_start(VALUE self)
   DEBUG_MSG(self, "debug", res);
 
   if (pthread_attr_init(&client->thread_attr)) {
-    rb_raise(aMIDI_TimerError, "Couldn't init pthread_attr object?!");
+    rb_raise(aMIDI_CWorkerError, "Couldn't init pthread_attr object?!");
   }
 
   DEBUG("Starting RT worker thread...");
   client->thread_running = 1;
-  pthread_create(&client->thread, &client->thread_attr,
-                 CWorker_thread, client);
+  if (pthread_create(&client->thread, &client->thread_attr,
+                     CWorker_thread, client)) {
+    rb_raise(aMIDI_CWorkerError, "Couldn't spawn realtime thread!");
+  }
   DEBUG("RT worker thread started!");
   return Qtrue;
 }
@@ -270,7 +272,9 @@ static VALUE Client_set_name(VALUE self, VALUE new_name)
   GET_CLIENT;
   client->name = StringValuePtr(new_name);
   DEBUG_STR("ALSA client name: \"%s\"", client->name);
-  snd_seq_set_client_name(client->seq, client->name);
+  if (snd_seq_set_client_name(client->seq, client->name)) {
+    rb_raise(aMIDI_AlsaError, "Couldn't set client name!");
+  }
   return new_name;
 }
 
@@ -293,14 +297,16 @@ static void set_tempo(client_t *client, int new_bpm)
   client->bpm = new_bpm;
   client->clocks_per_minute = client->clocks_per_beat * client->bpm;
   client->clocks_per_second = (float)(client->clocks_per_minute) / 60.0f;
+
   client->thread_period.tv_sec = 0;
   client->thread_period.tv_nsec = MAX_NSEC / (long)(client->clocks_per_second);
 
 #if 0
-  printf("bpm = %d\n", client->bpm);
-  printf("cpb = %d\n", client->clocks_per_beat);
-  printf("cpm = %d\n", client->clocks_per_minute);
-  printf("cps = %f\n", client->clocks_per_second);
+  printf("NEW TEMPO:\n");
+  printf(" bpm = %d\n",  client->bpm);
+  printf(" cpb = %d\n",  client->clocks_per_beat);
+  printf(" cpm = %d\n",  client->clocks_per_minute);
+  printf(" cps = %f\n",  client->clocks_per_second);
   printf("nsec = %ld\n", client->thread_period.tv_nsec);
 #endif
 }

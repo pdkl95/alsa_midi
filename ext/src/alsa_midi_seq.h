@@ -49,7 +49,8 @@ extern VALUE aMIDI_Looper;
 extern VALUE aMIDI_LooperSeq16;
 
 extern VALUE aMIDI_Error;
-extern VALUE aMIDI_TimerError;
+extern VALUE aMIDI_ParamError;
+extern VALUE aMIDI_CWorkerError;
 extern VALUE aMIDI_AlsaError;
 
 #define KLASS_UNDER(scope, name) rb_const_get(scope, rb_intern(#name))

@@ -23,7 +23,7 @@ static VALUE Port_setup(VALUE self)
   //DEBUG_NUM("@port_id = %d", ret);
 
   if (ret < 0) {
-    rb_raise(aMIDI_AlsaError, "Error creating sequencer READ port.");
+    rb_raise(aMIDI_AlsaError, "Error creating ALSA sequencer port.");
     return Qnil;
   }
   SET_IV(port_id, retval);
@@ -47,7 +47,7 @@ static VALUE Port_each_connected(VALUE self)
   IV_INT(port_id);
 
   if (!rb_block_given_p()) {
-    rb_raise(aMIDI_AlsaError, "Error creating sequencer READ port.");
+    rb_raise(aMIDI_ParamError, "each_connected requires a block!");
     return Qnil;
   }
   proc = rb_block_proc();
@@ -144,6 +144,14 @@ static VALUE PortTX_note(VALUE self, VALUE ch, VALUE note, VALUE vel, VALUE del)
   return self;
 }
 
+static VALUE Port_create_seq16(VALUE self, VALUE channel)
+{
+  int ch = NUM2INT(channel);
+  if (ch < 0 || ch > 15) {
+    rb_raise(aMIDI_ParamError, "Error creating sequencer READ port.");
+  }
+}
+
 void Init_aMIDI_Port()
 {
   FUNC_X(Port, setup, 0);
@@ -155,5 +163,7 @@ void Init_aMIDI_Port()
   FUNC_X(PortTX, note_off, 3);
   FUNC_X(PortTX, note,     4);
 
-  FUNC(Port,   each_connected, 0);
+  FUNC(Port, each_connected, 0);
+
+  FUNC(Port, create_seq16, 1);
 }
