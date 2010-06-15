@@ -19,6 +19,10 @@
 # include <stdlib.h>
 #endif
 
+#ifdef HAVE_STDINT_H
+# include <stdint.h>
+#endif
+
 #ifdef HAVE_ASOUNDLIB_H
 # include <asoundlib.h>
 #else
@@ -35,6 +39,57 @@
 # undef USE_SETSCHEDULER
 #endif
 
+#if defined(__GNUC__)
+#define PACK_STRUCT __attribute__ ((packed))
+#else
+# warning Not GNU C - structs may not be packed properly!
+#define PACK_STRUCT
+#endif
+
+#if (defined(__GNUC__) && (__GNUC__ >= 4) && (__GNUC_MINOR__ >= 4) \
+     && defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_1)                \
+     && defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_2)                \
+     && defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8))
+# define ATOMIC_BUILTINS 1
+#else
+# undef ATOMIC_BUILTINS
+#endif
+
+/******************************************************
+ * Use the GCC atomic helpers if available, otherwise 
+ * fall back to using a global mutex from pthreads.
+ */
+#ifdef ATOMIC_BUILTINS
+
+#define ATOMIC_AND_8( x, mask) __sync_and_and_fetch((x), (mask))
+#define ATOMIC_AND_16(x, mask) __sync_and_and_fetch((x), (mask))
+#define ATOMIC_AND_64(x, mask) __sync_and_and_fetch((x), (mask))
+#define ATOMIC_OR_8(  x, mask) __sync_or_and_fetch((x),  (mask))
+#define ATOMIC_OR_16( x, mask) __sync_or_and_fetch((x),  (mask))
+#define ATOMIC_OR_64( x, mask) __sync_or_and_fetch((x),  (mask))
+#define ATOMIC_XOR_8( x, mask) __sync_xor_and_fetch((x), (mask))
+#define ATOMIC_XOR_16(x, mask) __sync_xor_and_fetch((x), (mask))
+#define ATOMIC_XOR_64(x, mask) __sync_xor_and_fetch((x), (mask))
+
+#else /*ATOMIC_BUILTINS*/
+
+# include <pthread.h>
+
+extern pthread_mutex_t aMIDI_global_mutex;
+#define LOCKED_OP_FWD_DECL(name, size) \
+  void ATOMIC_##name##_##size(volatile uint##size##_t *x, uint##size##_t mask);
+#define LOCKED_OP_FWD(name)    \
+  LOCKED_OP_FWD_DECL(name, 8)  \
+  LOCKED_OP_FWD_DECL(name, 16) \
+  LOCKED_OP_FWD_DECL(name, 64)
+LOCKED_OP_FWD(AND)
+LOCKED_OP_FWD(OR)
+LOCKED_OP_FWD(XOR)
+#undef LOCKED_OP_FWD
+#undef LOCKED_OP_FWD_DECL
+
+#endif /*ATOMIC_BUILTINS*/
+
 extern VALUE aMIDI;
 extern VALUE aMIDI_Base;
 extern VALUE aMIDI_Scale;
@@ -46,12 +101,23 @@ extern VALUE aMIDI_PortTX;
 extern VALUE aMIDI_PortRX;
 extern VALUE aMIDI_Client;
 extern VALUE aMIDI_Looper;
-extern VALUE aMIDI_LooperSeq16;
+extern VALUE aMIDI_LooperSeq;
+extern VALUE aMIDI_LooperSeqMono;
 
 extern VALUE aMIDI_Error;
 extern VALUE aMIDI_ParamError;
 extern VALUE aMIDI_CWorkerError;
 extern VALUE aMIDI_AlsaError;
+
+#define Q(x) #x
+
+#define AMIDI_ERR(type, msg) \
+  rb_raise(type, msg);       \
+  return Qnil;
+
+#define  PARAM_ERR(msg) AMIDI_ERR(aMIDI_ParamError,   msg)
+#define WORKER_ERR(msg) AMIDI_ERR(aMIDI_CWorkerError, msg)
+#define   ALSA_ERR(msg) AMIDI_ERR(aMIDI_AlsaError,    msg)
 
 #define KLASS_UNDER(scope, name) rb_const_get(scope, rb_intern(#name))
 #define KLASS(name) KLASS_UNDER(rb_cObject, name)

@@ -41,24 +41,40 @@ static aMIDI_inline int cmp_timespec(ts_t a, ts_t b)
 /*************************************************************************
  * Worker Thread
  */
-static aMIDI_inline void CWorker_send_note(client_t *client, ev_t *ev)
+static aMIDI_inline void CWorker_send_note(client_t *client, ev_t *ev,
+                                           uint8_t is_noteon)
 {
+  ev_atomic_t x;
   snd_seq_event_t e;
-  int note = midi_note_from_ev(ev);
+  uint8_t note, vel;
+
+  x.raw = ev->atomic.raw;
+  note  = midi_note_from_ev_atomic(&x, ev->scale);
+  vel   = x.field.velocity;
 
   snd_seq_ev_clear(&e);
   snd_seq_ev_set_source(&e, ev->port_id);
   snd_seq_ev_set_subs(&e);
-  if (ev->flags & EV_FLAG_NOTEON) {
-    snd_seq_ev_set_noteon(&e, ev->channel, note, ev->velocity);
+  if (is_noteon) {
+    snd_seq_ev_set_noteon(&e, ev->channel, note, vel);
   } else {
-    snd_seq_ev_set_noteoff(&e, ev->channel, note, ev->velocity);
+    snd_seq_ev_set_noteoff(&e, ev->channel, note, vel);
   }
   snd_seq_ev_set_direct(&e);
   snd_seq_event_output_direct(client->seq, &e);
   //printf("\nNOTE: %d, ch=%d\n", note, ev->channel);
 }
 
+static aMIDI_inline void CWorker_send_note_on(client_t *client, ev_t *ev)
+{
+  CWorker_send_note(client, ev, 1);
+}
+
+static aMIDI_inline void CWorker_send_note_off(client_t *client, ev_t *ev)
+{
+  CWorker_send_note(client, ev, 0);
+}
+  
 static aMIDI_inline void CWorker_schedule_ev(client_t *client, ev_t *ev)
 {
   clock_gettime(GETTIME_CLOCK, &ev->alarm);
@@ -82,21 +98,21 @@ static aMIDI_inline void CWorker_return_ev(client_t *client, ev_t *ev)
 
 static void CWorker_process_ev(client_t *client, ev_t *ev)
 {
-  switch(ev->type) {
-  case EV_NOTE:
-    CWorker_send_note(client, ev);
-    if ((ev->flags & EV_FLAG_NOTEON) && (ev->flags & EV_FLAG_NOTEOFF)) {
-      ev->flags &= ~EV_FLAG_NOTEON;
+  ev_atomic_t x;
+  x.raw = ev->atomic.raw;
+
+  if (EVa_IS_NOTEON(x) || EVa_IS_NOTEOFF(x)) {
+    CWorker_send_note_on(client, ev);
+    if (EV_IS_NOTE(ev)) {
+      //ev->flags &= ~EV_FLAG_NOTEON;
       CWorker_schedule_ev(client, ev);
     } else {
       CWorker_return_ev(client, ev);
     }
-    break;
 
-  default:
+  } else {
     // noop
     CWorker_return_ev(client, ev);
-    break;
   }
 }
 
@@ -104,22 +120,23 @@ static void CWorker_process_looper(client_t *client, looper_t *looper)
 {
   int i;
   ev_t *ev;
+  ev_atomic_t x;
 
   switch(looper->type) {
-  case LOOPER_SEQ16:
+  case LOOPER_SEQ:
+  case LOOPER_SEQ_MONO:
+    ev = LOOPER_EV_AT(looper, client->beat_total);
+    x.raw = ev->atomic.raw;
+
     if (client->clock == 0) {
       //write(1, "N", 1);
-      ev = LOOPER_EV_AT_BEAT(looper, client->beat_total);
-      if (!ev->off) {
-        ev->flags = EV_FLAG_NOTEON | EV_FLAG_STATIC;
-        CWorker_send_note(client, ev);
+      if (EVa_ACTIVE(&x)) {
+        CWorker_send_note_on(client, ev);
       }
     }
     if (client->clock == 2) {
       //write(1, "X", 1);
-      ev = LOOPER_EV_AT_BEAT(looper, client->beat_total);
-      ev->flags = EV_FLAG_NOTEOFF | EV_FLAG_STATIC;
-      CWorker_send_note(client, ev);
+      CWorker_send_note_off(client, ev);
     }
     break;
   }

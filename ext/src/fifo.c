@@ -30,12 +30,16 @@ int fifo_write_ex(fifo_t *f, void *p)
 
 int fifo_write(fifo_t *f, void *p)
 {
-  int next = FIFO_NEXT_WR(f);
-  if (f->rd == next) {
+  int r, w, next;
+  r = f->rd;
+  w = f->wr;
+
+  next = FIFO_NEXT(w, f->size);
+  if (r == next) {
     return 0; // full
   }
 
-  f->buf[f->wr] = p;
+  f->buf[w] = p;
   f->wr = next;
   return 1;
 }
@@ -43,10 +47,16 @@ int fifo_write(fifo_t *f, void *p)
 void *fifo_read(fifo_t *f)
 {
   void *ret;
-  if (f->rd == f->wr) {
+  int r, w;
+  r = f->rd;
+  w = f->wr;
+
+  if (r == w) {
     return NULL;
   }
-  ret = f->buf[f->rd];
-  f->rd = FIFO_NEXT_RD(f);
+
+  ret = f->buf[r];
+  r = FIFO_NEXT(r, f->size);
+  f->rd = r;
   return ret;
 }

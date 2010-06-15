@@ -1,20 +1,32 @@
 #include "alsa_midi_seq.h"
 
-aMIDI_inline int midi_note_from_ev(ev_t *ev)
+aMIDI_inline uint8_t midi_note_from_ev_atomic(ev_atomic_t *ev_a, scale_t *scale)
 {
-  if (ev->flags & EV_FLAG_TRANSPOSE) {
-    return midi_note_in_scale(ev->scale, ev->note_offset, ev->note_octave);
+  if (scale && EVa_TRANSPOSE(ev_a)) {
+    return midi_note_in_scale(scale, ev_a->field.note, ev_a->field.octave);
   } else {
-    return ev->note;
+    return ev_a->field.note;
   }
+}
+
+aMIDI_inline uint8_t midi_note_from_ev(ev_t *ev)
+{
+  GET_EV_A;
+  return midi_note_from_ev_atomic(&ev_a, ev->scale);
 }
 
 static VALUE Ev_get_etype(VALUE self)
 {
   GET_EV;
   VALUE ret;
-  switch(ev->type) {
-  case EV_NOTE:
+  switch(ev->atomic.field.type) {
+  case EV_TYPE_NOTEON:
+    ret = SYM("note_on");
+    break;
+  case EV_TYPE_NOTEOFF:
+    ret = SYM("note_off");
+    break;
+  case EV_TYPE_NOTE:
     ret = SYM("note");
     break;
   default:
@@ -23,42 +35,41 @@ static VALUE Ev_get_etype(VALUE self)
   }
   return ret;
 }
+#define EV_ATOMIC_INT_GETTER(fname)         \
+  static VALUE Ev_get_##fname(VALUE self) { \
+    GET_EV;                                 \
+    return INT2NUM(ev->atomic.field.fname); \
+  }
 
-static VALUE Ev_get_etype_id(VALUE self)
-{
-  return INT2NUM(EV_NULL);
-}
+#define EV_ATOMIC_INT_SETTER(fname)                       \
+  static VALUE Ev_set_##fname(VALUE self, VALUE newval) { \
+    int x = NUM2INT(newval);                              \
+    GET_EV;                                               \
+    ev->atomic.field.fname = x;                           \
+    return newval;                                        \
+  }
 
-static VALUE EvNote_get_etype_id(VALUE self)
-{
-  return INT2NUM(EV_NOTE);
-}
+#define EV_ATOMIC_INT_ACCESSOR(fname) \
+  EV_ATOMIC_INT_GETTER(fname);        \
+  EV_ATOMIC_INT_SETTER(fname);
+
+EV_ATOMIC_INT_ACCESSOR(note);
+EV_ATOMIC_INT_ACCESSOR(octave);
+EV_ATOMIC_INT_ACCESSOR(velocity);
 
 STD_INT_ACCESSOR(Ev, ev_t, port_id);
 STD_INT_ACCESSOR(Ev, ev_t, channel);
-STD_INT_ACCESSOR(Ev, ev_t, note_offset);
-STD_INT_ACCESSOR(Ev, ev_t, note_octave);
-STD_INT_ACCESSOR(Ev, ev_t, velocity);
-
-static void Ev_new_preinit(VALUE self, ev_t *ev)
-{
-  VALUE etype = rb_funcall(self, rb_intern("etype_id"), 0);
-  ev->type = NUM2INT(etype);
-}
 
 STD_FREE(Ev, ev_t);
-STD_NEW_PREINIT(Ev, ev_t);
+STD_NEW(Ev, ev_t);
 
 void Init_aMIDI_Ev()
 {
   CLASS_NEW(Ev);
-  GETTER(Ev, etype);
-  GETTER(Ev, etype_id);
-  GETTER(EvNote, etype_id);
 
   ACCESSOR(Ev, port_id);
   ACCESSOR(Ev, channel);
-  ACCESSOR(Ev, note_offset);
-  ACCESSOR(Ev, note_octave);
+  ACCESSOR(Ev, note);
+  ACCESSOR(Ev, octave);
   ACCESSOR(Ev, velocity);
 }

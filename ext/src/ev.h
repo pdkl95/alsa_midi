@@ -1,42 +1,51 @@
 #ifndef EV_H
 #define EV_H
 
-#define EV_NULL 0
-#define EV_NOTE 1
+#define EV_MEM_FIFO (0x1)
+#define EV_MEM_LOOP (0x2)
 
-#define EV_FLAG_NOTEON    0x0001
-#define EV_FLAG_NOTEOFF   0x0002
-#define EV_FLAG_NOTE      (EV_FLAG_NOTEON | EV_FLAG_NOTEOFF)
-#define EV_FLAG_STATIC    0x0010
-#define EV_FLAG_TRANSPOSE 0x0020
+#define EV_FLAG_ACTIVE    0x01
+#define EV_FLAG_TRANSPOSE 0x02
 
-#define EV_MEM_RUBY   1
-#define EV_MEM_FIFO   2
-#define EV_MEM_LOOPER 3
+#define EV_TYPE_NOTEON  (0x1)
+#define EV_TYPE_NOTEOFF (0x2)
+#define EV_TYPE_NOTE    (EV_TYPE_NOTEON | EV_TYPE_NOTEOFF)
+
+union ev_atomic {
+  uint64_t raw;
+  struct {
+    uint16_t duration;
+    uint8_t  note;
+    int8_t   octave;
+    uint8_t  velocity;
+    uint8_t  flags;
+    uint8_t  type;
+    uint8_t  reserved;
+  } field PACK_STRUCT;
+};
+typedef union ev_atomic ev_atomic_t;
+
+// many things break if this is not an int64 that we can
+// read and write atomicly. this is a hack to force the sizeof()
+// check to happen at compile time.
+char ev_atomic_t_must_be_8_bytes[1 - 2*(sizeof(ev_atomic_t) != 8)];
 
 struct seq_event {
+  // fields to be used ONLY by the worker thread
   struct seq_event *next;
   struct seq_event *prev;
-
-  int type;
-  int flags;
-  int mem;
-
-  scale_t *scale;
-
-  int port_id;
-  int channel;
-
-  int note;
-  int note_offset;
-  int note_octave;
-
-  int velocity;
-
-  ts_t delay;
   ts_t alarm;
 
-  int off;
+  // flags that change across threads
+  // MUST USE ATOMIC READ/WRITE!
+  volatile ev_atomic_t atomic;
+
+  // fields that do not change across threads
+  int           port_id;
+  unsigned char channel;
+  scale_t      *scale;
+  unsigned char mem:2;
+  ts_t delay;
 };
 typedef struct seq_event ev_t;
 
@@ -44,14 +53,39 @@ typedef struct seq_event ev_t;
   ev_t *ev;                       \
   Data_Get_Struct(obj, ev_t, ev);
 
-#define GET_EV GET_EV_STRUCT(self)
+#define GET_EV_A             \
+  ev_atomic_t ev_a;          \
+  ev_a.raw = ev->atomic.raw;
 
-#define EV_ACTIVE(ev) ((ev) && !(ev)->off)
+#define GET_EV         \
+  GET_EV_STRUCT(self); \
+  GET_EV_A;
 
-int midi_note_from_ev(ev_t *ev);
+
+#define EVa_HAS_FLAG(ev_a, ev_flag) ((ev_a)->field.flags & ev_flag)
+#define EVa_ACTIVE(ev_a)    EVa_HAS_FLAG(ev_a, EV_FLAG_ACTIVE)
+#define EVa_TRANSPOSE(ev_a) EVa_HAS_FLAG(ev_a, EV_FLAG_TRANSPOSE)
+
+#define EV_HAS_FLAG(ev, ev_flag) (&((ev)->atomic, ev_flag))
+#define EV_ACTIVE(ev)    EVa_ACTIVE(&((ev)->atomic))
+#define EV_TRANSPOSE(ev) EVa_TRANSPOSE(&((ev)->atomic))
+
+#define EVa_IS(ev_a, ev_type) ((ev_a).field.type & ev_type)
+#define EVa_IS_NOTEON(ev_a)  EVa_IS(ev_a, EV_TYPE_NOTEON)
+#define EVa_IS_NOTEOFF(ev_a) EVa_IS(ev_a, EV_TYPE_NOTEOFF)
+#define EVa_IS_NOTE(ev_a)   (EVa_IS_NOTEON(ev_a) && EVa_IS_NOTEOFF(ev_a))
+
+#define EV_IS(ev, ev_type) EVa_IS((ev)->atomic, ev_type)
+#define EV_IS_NOTEON(ev)  EVa_IS_NOTEON((ev)->atomic)
+#define EV_IS_NOTEOFF(ev) EVa_IS_NOTEOFF((ev)->atomic)
+#define EV_IS_NOTE(ev)    EVa_IS_NOTE((ev)->atomic)
+
+uint8_t midi_note_from_ev_atomic(ev_atomic_t *ev_a, scale_t *scale);
+uint8_t midi_note_from_ev(ev_t *ev);
 
 void Init_aMIDI_Ev();
 
-
+#define ev_on( ev) ATOMIC_OR_8( &ev->atomic.field.flags,  EV_FLAG_ACTIVE)
+#define ev_off(ev) ATOMIC_AND_8(&ev->atomic.field.flags, ~EV_FLAG_ACTIVE)
 
 #endif /*EV_H*/

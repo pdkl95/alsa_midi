@@ -43,7 +43,7 @@ module AlsaMIDI
     end
 
     def create_seq16!(midi_channel)
-      Looper::Seq16.new(@client, self, midi_channel)
+      Looper::Seq::Mono.new(@client, self, midi_channel)
     end
 
     def to_s

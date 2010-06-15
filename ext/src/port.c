@@ -99,18 +99,20 @@ static void send_ev(client_t *client, ev_t *ev)
   fifo_write(client->ev_tx, ev);
 }
 
-static void send_note_common(int flags, ts_t *delay,
+static void send_note_common(unsigned char ev_type, ts_t *delay,
                              VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
   CLIENT_PTR;
   IV_INT(port_id);
 
+  ev_atomic_t x;
+  x.field.type     = ev_type;
+  x.field.note     = NUM2INT(note);
+  x.field.velocity = NUM2INT(vel);
+  x.field.flags    = EV_FLAG_ACTIVE;
+
   ev_t *ev = get_ev(client, port_id, NUM2INT(ch));
-  ev->type     = EV_NOTE;
-  ev->note     = NUM2INT(note);
-  ev->velocity = NUM2INT(vel);
-  ev->flags    = flags | EV_FLAG_STATIC;
-  ev->off      = 0;
+  ev->atomic.raw = x.raw;
 
   if (delay) {
     ev->delay.tv_sec  = delay->tv_sec;
@@ -122,14 +124,14 @@ static void send_note_common(int flags, ts_t *delay,
 
 static VALUE PortTX_note_on(VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
-  send_note_common(EV_FLAG_NOTEON, NULL,
+  send_note_common(EV_TYPE_NOTEON, NULL,
                    self, ch, note, vel);
   return self;
 }
 
 static VALUE PortTX_note_off(VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
-  send_note_common(EV_FLAG_NOTEOFF, NULL,
+  send_note_common(EV_TYPE_NOTEOFF, NULL,
                    self, ch, note, vel);
   return self;
 }
@@ -139,16 +141,22 @@ static VALUE PortTX_note(VALUE self, VALUE ch, VALUE note, VALUE vel, VALUE del)
   ts_t delay;
   delay.tv_sec = 0;
   delay.tv_nsec = NUM2INT(del);
-  send_note_common(EV_FLAG_NOTE, &delay,
+  send_note_common(EV_TYPE_NOTE, &delay,
                    self, ch, note, vel);
   return self;
 }
 
-static VALUE Port_create_seq16(VALUE self, VALUE channel)
+static VALUE Port_create_seq_mono(VALUE self, VALUE channel, VALUE num_steps)
 {
-  int ch = NUM2INT(channel);
-  if (ch < 0 || ch > 15) {
-    rb_raise(aMIDI_ParamError, "Error creating sequencer READ port.");
+  int ch  = NUM2INT(channel);
+  int len = NUM2INT(num_steps);
+
+  if (ch < 1 || ch > 16) {
+    PARAM_ERR("MIDI channel must be 1-16");
+  }
+
+  if (len < 1 || len > LOOPER_SEQ_MAX_STEPS) {
+    PARAM_ERR("num_steps must be 1-" Q(LOOPER_SEQ_MAX_STEPS));
   }
 }
 
@@ -163,7 +171,6 @@ void Init_aMIDI_Port()
   FUNC_X(PortTX, note_off, 3);
   FUNC_X(PortTX, note,     4);
 
-  FUNC(Port, each_connected, 0);
-
-  FUNC(Port, create_seq16, 1);
+  FUNC(Port, each_connected,  0);
+  FUNC(Port, create_seq_mono, 1);
 }

@@ -16,9 +16,7 @@ void fifo_free(fifo_t *f);
 int fifo_write(fifo_t *f, void *p);
 void *fifo_read(fifo_t *f);
 
-#define FIFO_NEXT(f, x) ((x + 1) % f->size)
-#define FIFO_NEXT_RD(f) FIFO_NEXT(f, f->rd)
-#define FIFO_NEXT_WR(f) FIFO_NEXT(f, f->wr)
+#define FIFO_NEXT(x, size) ((x + 1) % size)
 
 #define FIFO_FLUSH(f, p)            \
   while((p = fifo_read(f)) != NULL) \

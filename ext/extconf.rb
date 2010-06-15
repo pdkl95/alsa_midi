@@ -11,7 +11,7 @@ pkg = pkg_config(ALSA_PKG) or fail "Missing package #{ALSA_PKG} in pkg-config!"
 header_dir = pkg[0].sub(/^-I/,'').sub(/\s*$/,'')
 puts "using ALSA headers in: #{header_dir.inspect}"
 
-['stdio.h', 'stdlib.h', 'unistd.h', 'pthread.h', 'time.h'
+['stdio.h', 'stdlib.h', 'stdint.h', 'unistd.h', 'pthread.h', 'time.h'
 ].each do |hdr|
   have_header(hdr) or fail "missing: basic headers #{hdr.inspect}"
 end
@@ -23,6 +23,13 @@ have_library('pthread', 'pthread_attr_init') or fail "missing: pthreads!"
 end
 ['CLOCK_MONOTONIC', 'TIMER_ABSTIME'].each do |m|
   have_macro(m, 'time.h') or fail "Missing time.h macro: #{m}"
+end
+[1, 2, 8].each do |size|
+  have_macro("__GCC_HAVE_SYNC_COMPARE_AND_SWAP_#{size}")
+end
+
+['int8_t', 'uint8_t', 'uint16_t', 'uint64_t'].each do |t|
+  have_type(t, 'stdint.h') or fail "missing type inn stdint.h: #{t}"
 end
 
 if have_header('sched.h')
