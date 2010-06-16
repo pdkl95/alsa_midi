@@ -76,10 +76,10 @@ void Init_alsa_midi_seq()
   aMIDI_Error = rb_define_class_under(aMIDI, "Error", rb_eRuntimeError);
 
 #define E(name) \
-  aMIDI_##name = rb_define_class_under(aMIDI, #name, aMIDI_Error);
-  E(ParamError);
-  E(CWorkerError);
-  E(AlsaError);
+  aMIDI_##name##Error = rb_define_class_under(aMIDI_Error, #name, aMIDI_Error);
+  E(Param);
+  E(CWorker);
+  E(Alsa);
 #undef E
 
   Init_aMIDI_Scale();

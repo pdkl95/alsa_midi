@@ -15,8 +15,8 @@ struct alsa_midi_seq_client {
 
   pthread_t      thread;
   pthread_attr_t thread_attr;
-  int            thread_running;
-  int            thread_exit_status;
+  int8_t         thread_running;
+  int8_t         thread_exit_status;
   ts_t           thread_period;
   ev_t          *thread_delay_pool;
 
@@ -28,16 +28,18 @@ struct alsa_midi_seq_client {
   looper_t *looper_widgets;
 
   // meter
-  int clocks_per_beat;
-  int beats_per_measure;
-  int clock;
-  int beat;
-  int beat_total;
-  int measure;
+  uint8_t  clocks_per_beat;
+  uint8_t  beats_per_measure;
+  uint16_t clock;
+  uint8_t  beat;
+  uint8_t  measure;
+
+  uint64_t clock_total;
+  uint64_t beat_total;
 
   // tempo
-  int bpm;
-  int clocks_per_minute;
+  uint16_t bpm;
+  uint16_t clocks_per_minute;
   float clocks_per_second;
 
 };

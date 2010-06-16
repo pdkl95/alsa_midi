@@ -1,61 +1,95 @@
 module AlsaMIDI
   class Client
+    class PortList < Array
+      attr_reader :client, :type, :port_klass
+
+      def initialize(client_obj, list_type, create_klass)
+        @client     = client_obj
+        @type       = list_type
+        @port_klass = create_klass
+      end
+
+      def find_by_name(name)
+        each do |port|
+          return port if port.name == name
+        end
+        nil
+      end
+
+      def to_s
+        ['[', map { |x| x.name }.join(', '), ']'].join
+      end
+
+      def create_port!(name)
+        push(port_klass.new(client, name))
+      end
+
+      def create!(port_names)
+        names = case port_names.class.to_s
+                when 'Fixnum'   then [nil] * port_names
+                when 'NilClass' then []
+                else                 port_names
+                end
+        
+        if names.is_a? Array
+          names.each do |name|
+            create_port! name
+          end
+        else
+          raise ::AlsaMIDI::Error::Param, {
+            :param    => "ALSA Port name",
+            :expected => [Array, Fixnum],
+            :given    => port_names
+          }
+        end
+      end
+    end
+    
     attr_accessor :opt
-    attr_reader :ports_tx, :ports_rx
+    attr_reader :tx_ports, :rx_ports
 
     def initialize(opt={})
-      @opt = AlsaMIDI::DEFAULT_CLIENT_OPT.merge(opt)
-      @ports_tx = []
-      @ports_rx = []
+      @opt = ::AlsaMIDI::DEFAULT_CLIENT_OPT.merge(opt)
+      @tx_ports = PortList.new(self, :tx, ::AlsaMIDI::Port::TX)
+      @rx_ports = PortList.new(self, :rx, ::AlsaMIDI::Port::RX)
 
       self.name              = @opt[:name]
       self.clocks_per_beat   = @opt[:clocks_per_beat]
       self.beats_per_measure = @opt[:beats_per_measure]
       self.bpm               = @opt[:bpm]
 
-      setup_ports :tx, AlsaMIDI::Port::TX
-      setup_ports :rx, AlsaMIDI::Port::RX
+      @tx_ports.create! opt[:tx]
+      @rx_ports.create! opt[:rx]
+    end
+
+    def inspect_params
+      [ "name=#{name.inspect}",
+        "clock=#{clocks_per_beat}:#{beats_per_measure}",
+        "tx=[#{tx_ports}]",
+        "rx=[#{rx_ports}]" ]
     end
 
     def inspect
-      "#<AlsaMIDI::Client name=#{name.inspect}, clock=#{clocks_per_beat}:#{beats_per_measure}, tx=[#{tx_port_str}], rx=[#{rx_port_str}]>"
+      "#<AlsaMIDI::Client #{inspect_params.join(', ')}]>"
     end
 
     def to_s
-      "AlsaMIDI::Client[#{name.inspect}]{ #{clocks_per_beat}:#{beats_per_measure} clock, #{@ports_tx.length} tx, #{@ports_rx.length} rx }"
+      "AlsaMIDI::Client\n" + inspect_params.map do |str|
+        "    -- #{str}"
+      end.join("\n")
     end
     
     def to_details
       <<CLIENT_TO_S
 #{to_s}
-  tx_ports: #{tx_port_str}
-  rx_ports: #{rx_port_str}
+  tx_ports: #{tx_ports}
+  rx_ports: #{rx_ports}
 CLIENT_TO_S
     end
     
-    def port_str(list)
-      ['[', list.map { |x| x.name }.join(', '), ']'].join
-    end
-
-    def tx_port_str
-      port_str @ports_tx
-    end
-
-    def rx_port_str
-      port_str @ports_rx
-    end
-
-    def each_tx_port
-      @ports_tx.each { |port| yield(port) }
-    end
-
-    def each_rx_port
-      @ports_rx.each { |port| yield(port) }
-    end
-
     def each_port(&block)
-      each_tx_port(&block)
-      each_rx_port(&block)
+      tx_ports.each(&block)
+      rx_ports.each(&block)
     end
 
     def ports
@@ -63,31 +97,11 @@ CLIENT_TO_S
     end
 
     def find_port_by_name(name)
-      each_port do |port|
-        return port if port.name == name
-      end
-      nil
-    end
-
-    def create_tx_port(opt={})
-      @ports_tx.push AlsaMIDI::Port::TX.new(self, opt)
-    end
-
-    def create_rx_port(opt={})
-      @ports_rx.push AlsaMIDI::Port::RX.new(self, opt)
+      tx_ports.find_by_name(name) || rx_ports.find_by_name(name)
     end
 
     def tempo_changed!
       info "NEW TEMPO --> #{tempo} us/tick, #{bpm} bpm"
-    end
-
-    def setup_ports(type, klass, names = opt[type])
-      names = [nil] * names unless names.class == Array
-      names.each do |name|
-        port_opt = @opt[:port_opts] || {}
-        port_opt[:name] = name
-        send("ports_#{type}").push(klass.new(self, port_opt))
-      end
     end
   end
 end

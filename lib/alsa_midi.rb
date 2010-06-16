@@ -29,6 +29,7 @@ end
 alsa_midi_require(File.dirname(__FILE__) + '/../ext/alsa_midi_seq')
 
 # pull in the reset of the libarary as (easier...) ruby code
+require 'alsa_midi/error'
 require 'alsa_midi/scale'
 require 'alsa_midi/looper'
 require 'alsa_midi/port'

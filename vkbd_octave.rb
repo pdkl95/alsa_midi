@@ -8,7 +8,7 @@ require 'alsa_midi'
 
 $client = AlsaMIDI::Client.new :tx => 1, :clocks_per_beat => 4
 
-$port = $client.ports_tx.first
+$port = $client.tx_ports.first
 $seq = {}
 [[:bass, 36], [:snare, 38], [:highhat, 42], [:crash, 49]
 ].each do |x|
@@ -97,6 +97,7 @@ class GUI
           @vkbd_window.destroy
         else
           vkbd_window.show_all
+          set_scale!
         end
       end
       hbox.pack_start(b_kbd)
@@ -200,7 +201,7 @@ class GUI
     midi_note = @scale.midi_note(offset)
     note_name = @scale.note_names[offset]
     puts "note: #{offset}, #{note_name} (MIDI_NOTE == #{midi_note})"
-    $port.note!  0, midi_note, 127, 700000000
+    $port.note!  0, midi_note, 127, 8
   end
 
   def initialize

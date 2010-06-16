@@ -4,11 +4,6 @@ module AlsaMIDI
     attr_reader :client, :port_id, :name
 
     class << self
-      def port_name(client, name)
-        name = name.next while client.find_port_by_name(name)
-        name
-      end
-
       def default_name
         "port_00"
       end
@@ -26,11 +21,17 @@ module AlsaMIDI
       @type_name ||= self.class.to_s.gsub(/.*::/,'')
     end
 
-    def initialize(client_obj, opt={})
-      @port_id = nil
-      @client  = client_obj
-      @name    = Port.port_name(@client, (opt[:name] || self.class.default_name))
-      setup!
+    def generate_port_name(pname = @requested_port_name)
+      pname = self.class.default_name unless pname
+      pname = pname.next while client.find_port_by_name(name)
+      pname
+    end
+
+    def port_name
+      @port_name ||= generate_port_name
+    end
+
+    def initialize
       info "New port: #{inspect}"
     end
 

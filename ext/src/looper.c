@@ -19,12 +19,10 @@ static VALUE Looper_set_note(VALUE self, VALUE n, VALUE d)
   x.field.flags    = 0;
   x.field.note     = NUM2INT(n);
   x.field.velocity = 127;
+  x.field.duration = looper->client->clocks_per_beat / 4;
 
   for (i=0; i<looper->seq_len; i++) {
     looper->seq_ev[i].atomic.raw = x.raw;
-
-    looper->seq_ev[i].delay.tv_sec = 0;
-    looper->seq_ev[i].delay.tv_sec = duration;
   }
   return self;
 }

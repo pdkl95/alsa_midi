@@ -1,33 +1,8 @@
 #include "alsa_midi_seq.h"
 
-static aMIDI_inline client_t *client_for(VALUE self)
-{
-  GET_CLIENT_STRUCT(GET_IV(client));
-  return client;
-}
-#define CLIENT_PTR client_t *client = client_for(self)
-
 static unsigned int find_caps(VALUE self)  
 {
   return NUM2INT(rb_funcall(self, rb_intern("cap_flags"), 0));
-}
-
-static VALUE Port_setup(VALUE self)
-{
-  CLIENT_PTR;
-  IV_STR(name);
-  int ret = snd_seq_create_simple_port(client->seq, name, find_caps(self),
-                                       SND_SEQ_PORT_TYPE_MIDI_GENERIC |
-                                       SND_SEQ_PORT_TYPE_APPLICATION);
-  int retval = INT2NUM(ret);
-  //DEBUG_NUM("@port_id = %d", ret);
-
-  if (ret < 0) {
-    rb_raise(aMIDI_AlsaError, "Error creating ALSA sequencer port.");
-    return Qnil;
-  }
-  SET_IV(port_id, retval);
-  return retval;
 }
 
 #define CAP_FLAG(klass, type)                       \
@@ -41,10 +16,9 @@ CAP_FLAG(PortRX, WRITE)
 
 static VALUE Port_each_connected(VALUE self)
 {
+  GET_PORT;
   VALUE proc;
   ID sym_call = rb_intern("call");
-  CLIENT_PTR;
-  IV_INT(port_id);
 
   if (!rb_block_given_p()) {
     rb_raise(aMIDI_ParamError, "each_connected requires a block!");
@@ -54,7 +28,7 @@ static VALUE Port_each_connected(VALUE self)
 
   snd_seq_port_info_t *pinfo;
   snd_seq_port_info_alloca(&pinfo);
-  snd_seq_get_port_info(client->seq, port_id, pinfo);
+  snd_seq_get_port_info(port->client->seq, port->port_id, pinfo);
 
   const snd_seq_addr_t *port_addr = snd_seq_port_info_get_addr(pinfo);
 
@@ -65,7 +39,7 @@ static VALUE Port_each_connected(VALUE self)
   snd_seq_query_subscribe_set_index(subs, 0);
 
   int count = 0;
-  while (snd_seq_query_port_subscribers(client->seq, subs) >= 0) {
+  while (snd_seq_query_port_subscribers(port->client->seq, subs) >= 0) {
     const int idx = snd_seq_query_subscribe_get_index(subs);
     const snd_seq_addr_t *addr;
     addr = snd_seq_query_subscribe_get_addr(subs);
@@ -79,70 +53,64 @@ static VALUE Port_each_connected(VALUE self)
   return INT2NUM(count);
 }
 
-static ev_t *get_ev(client_t *client, int port_id, int ch)
+static ev_t *get_ev(port_t *port, int ch)
 {
-  ev_t *ev = fifo_read(client->ev_free);
+  ev_t *ev = fifo_read(port->client->ev_free);
   if (ev == NULL) {
     rb_raise(aMIDI_Error, "No free snd_seq_event_t objects on the FIFO!");
     return NULL;
   }
   
   ev->mem     = EV_MEM_FIFO;
-  ev->port_id = port_id;
+  ev->port_id = port->port_id;
   ev->channel = ch;
 
   return ev;
 }
 
-static void send_ev(client_t *client, ev_t *ev)
+static aMIDI_inline void send_ev(port_t *port, ev_t *ev)
 {
-  fifo_write(client->ev_tx, ev);
+  fifo_write(port->client->ev_tx, ev);
 }
 
-static void send_note_common(unsigned char ev_type, ts_t *delay,
+static aMIDI_inline void send_eva(port_t *port, uint8_t ch, ev_atomic_t *ev_a)
+{
+  ev_t *ev = get_ev(port, NUM2INT(ch));
+  ev->atomic.raw = ev_a->raw;
+  send_ev(port, ev);
+}
+
+static void send_note_common(uint8_t ev_type, uint16_t duration,
                              VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
-  CLIENT_PTR;
-  IV_INT(port_id);
+  GET_PORT;
 
   ev_atomic_t x;
   x.field.type     = ev_type;
   x.field.note     = NUM2INT(note);
   x.field.velocity = NUM2INT(vel);
+  x.field.duration = duration;
   x.field.flags    = EV_FLAG_ACTIVE;
-
-  ev_t *ev = get_ev(client, port_id, NUM2INT(ch));
-  ev->atomic.raw = x.raw;
-
-  if (delay) {
-    ev->delay.tv_sec  = delay->tv_sec;
-    ev->delay.tv_nsec = delay->tv_nsec;
-  }
-
-  send_ev(client, ev);
+  
+  x.field.duration = 10;
+  send_eva(port, NUM2INT(ch), &x);
 }
 
 static VALUE PortTX_note_on(VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
-  send_note_common(EV_TYPE_NOTEON, NULL,
-                   self, ch, note, vel);
+  send_note_common(EV_TYPE_NOTEON, 0, self, ch, note, vel);
   return self;
 }
 
 static VALUE PortTX_note_off(VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
-  send_note_common(EV_TYPE_NOTEOFF, NULL,
-                   self, ch, note, vel);
+  send_note_common(EV_TYPE_NOTEOFF, 0, self, ch, note, vel);
   return self;
 }
 
-static VALUE PortTX_note(VALUE self, VALUE ch, VALUE note, VALUE vel, VALUE del)
+static VALUE PortTX_note(VALUE self, VALUE ch, VALUE note, VALUE vel, VALUE dur)
 {
-  ts_t delay;
-  delay.tv_sec = 0;
-  delay.tv_nsec = NUM2INT(del);
-  send_note_common(EV_TYPE_NOTE, &delay,
-                   self, ch, note, vel);
+  send_note_common(EV_TYPE_NOTE, NUM2INT(dur), self, ch, note, vel);
   return self;
 }
 
@@ -160,9 +128,42 @@ static VALUE Port_create_seq_mono(VALUE self, VALUE channel, VALUE num_steps)
   }
 }
 
+STD_FREE(Port, port_t);
+
+static VALUE Port_new(VALUE klass, VALUE c, VALUE name)
+{
+  port_t *port = ALLOC(port_t);
+  VALUE self = Data_Wrap_Struct(klass, NULL, Port_free, port);
+
+  GET_CLIENT_STRUCT(c);
+  port->client = client;
+
+  SET_IV(client, c);
+  SET_IV(requested_port_name, name);
+
+  name = rb_funcall(self, rb_intern("port_name"), 0);
+
+  port->port_id = snd_seq_create_simple_port(port->client->seq, 
+                                             StringValuePtr(name),
+                                             find_caps(self),
+                                             SND_SEQ_PORT_TYPE_MIDI_GENERIC |
+                                             SND_SEQ_PORT_TYPE_APPLICATION);
+  //DEBUG_NUM("@port_id = %d", port->port_id);
+
+  if (port->port_id < 0) {
+    rb_raise(aMIDI_AlsaError, "Error creating ALSA sequencer port.");
+  }
+
+  SET_IV(port_id, INT2NUM(port->port_id));
+  SET_IV(name, name);
+
+  rb_obj_call_init(self, 0, NULL);
+  return self;
+}
+
 void Init_aMIDI_Port()
 {
-  FUNC_X(Port, setup, 0);
+  EIGENFUNC(Port, new, 2);
 
   GETTER(PortTX, cap_flags);
   GETTER(PortRX, cap_flags);

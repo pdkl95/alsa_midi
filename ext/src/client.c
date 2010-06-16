@@ -42,15 +42,11 @@ static aMIDI_inline int cmp_timespec(ts_t a, ts_t b)
  * Worker Thread
  */
 static aMIDI_inline void CWorker_send_note(client_t *client, ev_t *ev,
-                                           uint8_t is_noteon)
+                                           ev_atomic_t *ev_a, uint8_t is_noteon)
 {
-  ev_atomic_t x;
   snd_seq_event_t e;
-  uint8_t note, vel;
-
-  x.raw = ev->atomic.raw;
-  note  = midi_note_from_ev_atomic(&x, ev->scale);
-  vel   = x.field.velocity;
+  uint8_t note = midi_note_from_ev_atomic(ev_a, ev->scale);
+  uint8_t vel  = ev_a->field.velocity;
 
   snd_seq_ev_clear(&e);
   snd_seq_ev_set_source(&e, ev->port_id);
@@ -65,20 +61,10 @@ static aMIDI_inline void CWorker_send_note(client_t *client, ev_t *ev,
   //printf("\nNOTE: %d, ch=%d\n", note, ev->channel);
 }
 
-static aMIDI_inline void CWorker_send_note_on(client_t *client, ev_t *ev)
-{
-  CWorker_send_note(client, ev, 1);
-}
-
-static aMIDI_inline void CWorker_send_note_off(client_t *client, ev_t *ev)
-{
-  CWorker_send_note(client, ev, 0);
-}
-  
 static aMIDI_inline void CWorker_schedule_ev(client_t *client, ev_t *ev)
 {
-  clock_gettime(GETTIME_CLOCK, &ev->alarm);
-  add_timespec(&ev->alarm, ev->delay);
+  ev->alarm_clock = client->clock_total + ev->atomic.field.duration;
+
   if (client->thread_delay_pool) {
     client->thread_delay_pool->prev = ev;
   }
@@ -87,12 +73,24 @@ static aMIDI_inline void CWorker_schedule_ev(client_t *client, ev_t *ev)
   client->thread_delay_pool = ev;
 }
 
+static aMIDI_inline void CWorker_unschedule_ev(client_t *client, ev_t *ev)
+{
+  ev->alarm_clock = 0;
+
+  if (ev->prev) {
+    ev->prev->next = ev->next;
+  } else {
+    client->thread_delay_pool = ev->next;
+  }
+  if (ev->next) {
+    ev->next->prev = ev->prev;
+  }
+}
+
 static aMIDI_inline void CWorker_return_ev(client_t *client, ev_t *ev)
 {
   if (ev->mem == EV_MEM_FIFO) {
     fifo_write(client->ev_free, ev);
-  } else {
-    fifo_write(client->ev_return, ev);
   }
 }
 
@@ -101,17 +99,25 @@ static void CWorker_process_ev(client_t *client, ev_t *ev)
   ev_atomic_t x;
   x.raw = ev->atomic.raw;
 
-  if (EVa_IS_NOTEON(x) || EVa_IS_NOTEOFF(x)) {
-    CWorker_send_note_on(client, ev);
-    if (EV_IS_NOTE(ev)) {
-      //ev->flags &= ~EV_FLAG_NOTEON;
-      CWorker_schedule_ev(client, ev);
-    } else {
+  if (EVa_IS_NOTE(x)) {
+    if (ev->alarm_clock) {
+      CWorker_send_note(client, ev, &x, 0);
+      CWorker_unschedule_ev(client, ev);
       CWorker_return_ev(client, ev);
+    } else {
+      CWorker_send_note(client, ev, &x, 1);
+      CWorker_schedule_ev(client, ev);
     }
 
-  } else {
-    // noop
+  } else if (EVa_IS_NOTEON(x)) {
+    CWorker_send_note(client, ev, &x, 1);
+    CWorker_return_ev(client, ev);
+
+  } else if (EVa_IS_NOTEOFF(x)) {
+    CWorker_send_note(client, ev, &x, 0);
+    CWorker_return_ev(client, ev);
+
+  } else { // noop - unknown event type
     CWorker_return_ev(client, ev);
   }
 }
@@ -131,12 +137,14 @@ static void CWorker_process_looper(client_t *client, looper_t *looper)
     if (client->clock == 0) {
       //write(1, "N", 1);
       if (EVa_ACTIVE(&x)) {
-        CWorker_send_note_on(client, ev);
+        CWorker_send_note(client, ev, &x, 1);
+        ev->alarm_clock = client->clock_total + x.field.duration;
       }
     }
-    if (client->clock == 2) {
+    if (ev->alarm_clock && (client->clock_total == ev->alarm_clock)) {
       //write(1, "X", 1);
-      CWorker_send_note_off(client, ev);
+      ev->alarm_clock = 0;
+      CWorker_send_note(client, ev, &x, 0);
     }
     break;
   }
@@ -194,17 +202,15 @@ static void *CWorker_thread(void *param)
     ev = client->thread_delay_pool;
     while(ev) {
       //write(1, ",", 1);
-      if (cmp_timespec(time_now, ev->alarm) > 0) {
-        //write(1, "A", 1);
-        if (ev->prev) {
-          ev->prev->next = ev->next;
-        } else {
-          client->thread_delay_pool = ev->next;
+      if (ev->alarm_clock) {
+        if (ev->alarm_clock == client->clock_total) {
+          //write(1, "A", 1);
+          CWorker_process_ev(client, ev);
         }
-        if (ev->next) {
-          ev->next->prev = ev->prev;
-        }
-        CWorker_process_ev(client, ev);
+      } else {
+        fprintf(stderr, RT_WRK
+                "Alarm scheduled event, but no alarm_clock value?!");
+        CWorker_unschedule_ev(client, ev);
       }
       ev = ev->next;
     }

@@ -14,7 +14,7 @@
 union ev_atomic {
   uint64_t raw;
   struct {
-    uint16_t duration;
+    uint16_t duration;  // in clocks
     uint8_t  note;
     int8_t   octave;
     uint8_t  velocity;
@@ -34,18 +34,17 @@ struct seq_event {
   // fields to be used ONLY by the worker thread
   struct seq_event *next;
   struct seq_event *prev;
-  ts_t alarm;
+  uint64_t alarm_clock;
 
   // flags that change across threads
   // MUST USE ATOMIC READ/WRITE!
   volatile ev_atomic_t atomic;
 
   // fields that do not change across threads
-  int           port_id;
-  unsigned char channel;
-  scale_t      *scale;
-  unsigned char mem:2;
-  ts_t delay;
+  int      port_id;
+  uint8_t  channel;
+  scale_t *scale;
+  uint8_t  mem;
 };
 typedef struct seq_event ev_t;
 
@@ -61,21 +60,19 @@ typedef struct seq_event ev_t;
   GET_EV_STRUCT(self); \
   GET_EV_A;
 
-
 #define EVa_HAS_FLAG(ev_a, ev_flag) ((ev_a)->field.flags & ev_flag)
-#define EVa_ACTIVE(ev_a)    EVa_HAS_FLAG(ev_a, EV_FLAG_ACTIVE)
-#define EVa_TRANSPOSE(ev_a) EVa_HAS_FLAG(ev_a, EV_FLAG_TRANSPOSE)
+#define EVa_IS(      ev_a, ev_type) ((ev_a).field.type & ev_type)
+#define EV_HAS_FLAG( ev,   ev_flag) (&((ev)->atomic, ev_flag))
+#define EV_IS(       ev,   ev_type) EVa_IS((ev)->atomic, ev_type)
 
-#define EV_HAS_FLAG(ev, ev_flag) (&((ev)->atomic, ev_flag))
-#define EV_ACTIVE(ev)    EVa_ACTIVE(&((ev)->atomic))
-#define EV_TRANSPOSE(ev) EVa_TRANSPOSE(&((ev)->atomic))
+#define EVa_ACTIVE(ev_a)      EVa_HAS_FLAG(ev_a, EV_FLAG_ACTIVE)
+#define EVa_TRANSPOSE(ev_a)   EVa_HAS_FLAG(ev_a, EV_FLAG_TRANSPOSE)
+#define EVa_IS_NOTEON(ev_a)   EVa_IS(      ev_a, EV_TYPE_NOTEON)
+#define EVa_IS_NOTEOFF(ev_a)  EVa_IS(      ev_a, EV_TYPE_NOTEOFF)
+#define EVa_IS_NOTE(ev_a)    (EVa_IS_NOTEON(ev_a) && EVa_IS_NOTEOFF(ev_a))
 
-#define EVa_IS(ev_a, ev_type) ((ev_a).field.type & ev_type)
-#define EVa_IS_NOTEON(ev_a)  EVa_IS(ev_a, EV_TYPE_NOTEON)
-#define EVa_IS_NOTEOFF(ev_a) EVa_IS(ev_a, EV_TYPE_NOTEOFF)
-#define EVa_IS_NOTE(ev_a)   (EVa_IS_NOTEON(ev_a) && EVa_IS_NOTEOFF(ev_a))
-
-#define EV_IS(ev, ev_type) EVa_IS((ev)->atomic, ev_type)
+#define EV_ACTIVE(ev)     EVa_ACTIVE(&((ev)->atomic))
+#define EV_TRANSPOSE(ev)  EVa_TRANSPOSE(&((ev)->atomic))
 #define EV_IS_NOTEON(ev)  EVa_IS_NOTEON((ev)->atomic)
 #define EV_IS_NOTEOFF(ev) EVa_IS_NOTEOFF((ev)->atomic)
 #define EV_IS_NOTE(ev)    EVa_IS_NOTE((ev)->atomic)
