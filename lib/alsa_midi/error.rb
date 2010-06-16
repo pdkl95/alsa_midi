@@ -1,7 +1,8 @@
 module AlsaMIDI
   class Error < RuntimeError
     class Param < Error
-      def initialize(opt)
+      def initialize(opt={})
+        opt = { :msg => opt } if opt.is_a? String
         super("invalid param class", opt)
       end
       
@@ -11,7 +12,7 @@ module AlsaMIDI
     end
     
     def initialize(err_msg=nil, opts={})
-      @opt   = opts
+      @opt = opts
       @opt[:msg] ||= err_msg if err_msg
       if @opt.has_key?(:expected)
         ex = @opt[:expected]
@@ -31,6 +32,10 @@ module AlsaMIDI
     def title(str=nil)
       str = "Unknown" unless str
       ">>> #{str} ERROR <<<"
+    end
+
+    def msg
+      @opt[:msg].inspect
     end
 
     def given_to_s

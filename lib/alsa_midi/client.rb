@@ -74,9 +74,7 @@ module AlsaMIDI
     end
 
     def to_s
-      "AlsaMIDI::Client\n" + inspect_params.map do |str|
-        "    -- #{str}"
-      end.join("\n")
+      "AlsaMIDI::Client{ #{inspect_params.join(', ')} }"
     end
     
     def to_details

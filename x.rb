@@ -21,20 +21,24 @@ puts c.to_details
 ev      = AlsaMIDI::Ev.new
 ev_note = AlsaMIDI::Ev::Note.new
 
-port = c.ports_tx.first
-loop = port.create_seq16!(3)
-loop.set_note 10, 300000000
+port = c.tx_ports.first
+#loop = port.create_seq16!(3)
+#loop.set_note 10, 300000000
 
-sleep 4
-port.note_on! 0, 55, 123
-port.note_on! 1, 58, 95
+port.note! 10, 61, 121, 10
+sleep 6
 
-port.note_off! 0, 55, 33
-port.note_off! 1, 58, 22
+port.note! 10, 62, 121, 10
 
+port.note_on! 1, 55, 123
+port.note_on! 2, 58, 95
 sleep 1
 
-port.note! 10, 66, 121, 900000000
+port.note_off! 1, 55, 33
+port.note_off! 2, 58, 22
+sleep 2
+
+port.note! 10, 66, 121, 10
 
 
 sleep 2000

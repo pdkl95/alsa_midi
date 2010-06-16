@@ -1,6 +1,17 @@
 #include "alsa_midi_seq.h"
 
-static unsigned int find_caps(VALUE self)  
+static aMIDI_inline int check_channel_number(uint8_t ch)
+{
+  if (ch < 1 || ch > 16) {
+    rb_raise(aMIDI_ParamError,
+             "MIDI channel must be 1-16 (got %d)", ch);
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+static unsigned int find_caps(VALUE self)
 {
   return NUM2INT(rb_funcall(self, rb_intern("cap_flags"), 0));
 }
@@ -75,43 +86,64 @@ static aMIDI_inline void send_ev(port_t *port, ev_t *ev)
 
 static aMIDI_inline void send_eva(port_t *port, uint8_t ch, ev_atomic_t *ev_a)
 {
-  ev_t *ev = get_ev(port, NUM2INT(ch));
+  check_channel_number(ch);
+
+  ev_t *ev = get_ev(port, ch-1);
   ev->atomic.raw = ev_a->raw;
+
   send_ev(port, ev);
 }
 
-static void send_note_common(uint8_t ev_type, uint16_t duration,
-                             VALUE self, VALUE ch, VALUE note, VALUE vel)
+static VALUE send_note_common(VALUE self, VALUE ch, VALUE note, VALUE vel,
+                              VALUE dur, uint8_t ev_type)
 {
   GET_PORT;
+  int channel  = NUM2INT(ch);
+  int noteval  = NUM2INT(note);
+  int velocity = NUM2INT(vel);
+  int duration = dur == Qnil ? 0 : NUM2INT(dur);
 
-  ev_atomic_t x;
-  x.field.type     = ev_type;
-  x.field.note     = NUM2INT(note);
-  x.field.velocity = NUM2INT(vel);
-  x.field.duration = duration;
-  x.field.flags    = EV_FLAG_ACTIVE;
-  
-  x.field.duration = 10;
-  send_eva(port, NUM2INT(ch), &x);
+#if 0
+  char *n_type;
+  VALUE s;
+
+  switch(ev_type) {
+  case EV_TYPE_NOTE:    n_type = "ON+OFF";   break;
+  case EV_TYPE_NOTEON:  n_type = "ON";       break;
+  case EV_TYPE_NOTEOFF: n_type = "OFF";      break;
+  default:              n_type = "Unknown!"; break;
+  }
+  s = PRINTF5("NOTE<%s> ch=%d, note=%d, vel=%d, dur=%d",
+              rb_str_new2(n_type),
+              INT2NUM(channel),  INT2NUM(noteval),
+              INT2NUM(velocity), INT2NUM(duration));
+  DEBUG_MSG(self, "info", s);
+#endif
+
+  ev_atomic_t ev_a;
+  ev_a.field.type     = ev_type;
+  ev_a.field.note     = noteval;
+  ev_a.field.velocity = velocity;
+  ev_a.field.flags    = EV_FLAG_ACTIVE;
+  ev_a.field.duration = duration;
+
+  send_eva(port, channel, &ev_a);
+  return self;
 }
 
 static VALUE PortTX_note_on(VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
-  send_note_common(EV_TYPE_NOTEON, 0, self, ch, note, vel);
-  return self;
+  return send_note_common(self, ch, note, vel, Qnil, EV_TYPE_NOTEON);
 }
 
 static VALUE PortTX_note_off(VALUE self, VALUE ch, VALUE note, VALUE vel)
 {
-  send_note_common(EV_TYPE_NOTEOFF, 0, self, ch, note, vel);
-  return self;
+  return send_note_common(self, ch, note, vel, Qnil, EV_TYPE_NOTEOFF);
 }
 
 static VALUE PortTX_note(VALUE self, VALUE ch, VALUE note, VALUE vel, VALUE dur)
 {
-  send_note_common(EV_TYPE_NOTE, NUM2INT(dur), self, ch, note, vel);
-  return self;
+  return send_note_common(self, ch, note, vel, dur, EV_TYPE_NOTE);
 }
 
 static VALUE Port_create_seq_mono(VALUE self, VALUE channel, VALUE num_steps)
@@ -119,12 +151,12 @@ static VALUE Port_create_seq_mono(VALUE self, VALUE channel, VALUE num_steps)
   int ch  = NUM2INT(channel);
   int len = NUM2INT(num_steps);
 
-  if (ch < 1 || ch > 16) {
-    PARAM_ERR("MIDI channel must be 1-16");
+  if (check_channel_number(ch)) {
+    return Qnil;
   }
 
   if (len < 1 || len > LOOPER_SEQ_MAX_STEPS) {
-    PARAM_ERR("num_steps must be 1-" Q(LOOPER_SEQ_MAX_STEPS));
+    PARAM_ERR_RETURN("num_steps must be 1-" Q(LOOPER_SEQ_MAX_STEPS));
   }
 }
 

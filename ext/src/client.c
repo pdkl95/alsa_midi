@@ -64,6 +64,10 @@ static aMIDI_inline void CWorker_send_note(client_t *client, ev_t *ev,
 static aMIDI_inline void CWorker_schedule_ev(client_t *client, ev_t *ev)
 {
   ev->alarm_clock = client->clock_total + ev->atomic.field.duration;
+#if 0
+  printf("SCHED: alarm_clock = %ld\n(now): clock_total =%ld\ndur = %d",
+         ev->alarm_clock, client->clock_total, ev->atomic.field.duration);
+#endif
 
   if (client->thread_delay_pool) {
     client->thread_delay_pool->prev = ev;
@@ -195,6 +199,7 @@ static void *CWorker_thread(void *param)
     //write(1, ".", 1);
     FIFO_FLUSH(client->ev_tx, ev) {
       //write(1, "#", 1);
+      ev->alarm_clock = 0;
       CWorker_process_ev(client, ev);
     }
 
@@ -225,6 +230,7 @@ static void *CWorker_thread(void *param)
 
     /* advance the song pointers */
     client->clock++;
+    client->clock_total++;
     if (client->clock >= client->clocks_per_beat) {
       client->clock = 0;
       client->beat++;
@@ -377,7 +383,9 @@ static void Client_new_preinit(VALUE self, client_t *client)
   client->clock   = 0;
   client->beat    = 0;
   client->measure = 0;
-  client->beat_total = 0;
+
+  client->clock_total = 0;
+  client->beat_total  = 0;
 
   client->thread_delay_pool = NULL;
   client->looper_widgets    = NULL;

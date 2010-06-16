@@ -109,15 +109,22 @@ extern VALUE aMIDI_ParamError;
 extern VALUE aMIDI_CWorkerError;
 extern VALUE aMIDI_AlsaError;
 
+extern VALUE sym_sprintf;
+
 #define Q(x) #x
 
-#define AMIDI_ERR(type, msg) \
-  rb_raise(type, msg);       \
+#define AMIDI_ERR(type, msg) rb_raise(type, msg);
+#define AMIDI_ERR_RETURN(type, msg) \
+  AMIDI_ERR(type, msg);             \
   return Qnil;
 
 #define  PARAM_ERR(msg) AMIDI_ERR(aMIDI_ParamError,   msg)
 #define WORKER_ERR(msg) AMIDI_ERR(aMIDI_CWorkerError, msg)
 #define   ALSA_ERR(msg) AMIDI_ERR(aMIDI_AlsaError,    msg)
+
+#define  PARAM_ERR_RETURN(msg) AMIDI_ERR_RETURN(aMIDI_ParamError,   msg)
+#define WORKER_ERR_RETURN(msg) AMIDI_ERR_RETURN(aMIDI_CWorkerError, msg)
+#define   ALSA_ERR_RETURN(msg) AMIDI_ERR_RETURN(aMIDI_AlsaError,    msg)
 
 #define KLASS_UNDER(scope, name) rb_const_get(scope, rb_intern(#name))
 #define KLASS(name) KLASS_UNDER(rb_cObject, name)
@@ -145,13 +152,30 @@ extern VALUE aMIDI_AlsaError;
 #define DEBUG(msg) DEBUG_MSG(self, "debug", rb_str_new2(msg))
 #define  INFO(msg) DEBUG_MSG(self,  "info", rb_str_new2(msg))
 
-#define PRINTF(fmt, value)                     \
-  rb_funcall(rb_mKernel, rb_intern("sprintf"), \
-             2, rb_str_new2(fmt), value)
+#define PRINTF(fmt, value)            \
+  rb_funcall(rb_mKernel, sym_sprintf, \
+             2, rb_str_new2(fmt),     \
+             value)
 
-#define PRINTF2(fmt, v1, v2)                   \
-  rb_funcall(rb_mKernel, rb_intern("sprintf"), \
-             3, rb_str_new2(fmt), v1, v2)
+#define PRINTF2(fmt, v1, v2)          \
+  rb_funcall(rb_mKernel, sym_sprintf, \
+             3, rb_str_new2(fmt),     \
+             v1, v2)
+
+#define PRINTF3(fmt, v1, v2, v3)      \
+  rb_funcall(rb_mKernel, sym_sprintf, \
+             4, rb_str_new2(fmt),     \
+             v1, v2, v3)
+
+#define PRINTF4(fmt, v1, v2, v3, v4)  \
+  rb_funcall(rb_mKernel, sym_sprintf, \
+             5, rb_str_new2(fmt),     \
+             v1, v2, v3, v4)
+
+#define PRINTF5(fmt, v1, v2, v3, v4, v5) \
+  rb_funcall(rb_mKernel, sym_sprintf,    \
+             6, rb_str_new2(fmt),        \
+             v1, v2, v3, v4, v5)
 
 #define DEBUG_MSG_VAL(obj, type, fmt, value)   \
   DEBUG_MSG(obj, type, PRINTF(fmt, value));

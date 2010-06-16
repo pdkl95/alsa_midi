@@ -19,6 +19,8 @@ VALUE aMIDI_ParamError;
 VALUE aMIDI_CWorkerError;
 VALUE aMIDI_AlsaError;
 
+VALUE sym_sprintf;
+
 #ifndef ATOMIC_BUILTINS
 #warning no atomic builtins! falling back to a pthread based mutex!
 
@@ -45,6 +47,7 @@ LOCKED_OP(XOR, ^)
 
 void Init_alsa_midi_seq()
 {
+  sym_sprintf = rb_intern("sprintf");
 #ifndef ATOMIC_BUILTINS
   pthread_mutex_init(&aMIDI_global_mutex, NULL);
 #endif
