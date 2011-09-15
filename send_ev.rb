@@ -25,7 +25,7 @@ port = c.tx_ports.first
 #loop = port.create_seq16!(3)
 #loop.set_note 10, 300000000
 
-port.note! 10, 61, 121, 10
+port.note! 1, 61, 121, 10
 sleep 6
 
 port.note! 10, 62, 121, 10
