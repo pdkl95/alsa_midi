@@ -38,12 +38,13 @@ to come back to it in the future... hmm.....
 .
 .
 
-^X^S
-git add -A
-git commit -m 'final checkin; so long and thanks for all the fish'
-git push
-cd ..
-mv alsa_midi.git defunct/
-^D
-
+<tt>
+    ^X^S
+    git add -A
+    git commit -m 'final checkin; so long and thanks for all the fish'
+    git push
+    cd ..
+    mv alsa_midi.git defunct/
+    ^D
+</tt>
 
