@@ -1,17 +1,50 @@
 = alsa_midi
 
-Description goes here.
+MIDI-sending engine for the ALSA sound engine
+in Linux, with a REALTIME, very low-latency
+worker thread.
 
-== Note on Patches/Pull Requests
- 
-* Fork the project.
-* Make your feature addition or bug fix.
-* Add tests for it. This is important so I don't break it in a
-  future version unintentionally.
-* Commit, do not mess with rakefile, version, or history.
-  (if you want to have your own version, that is fine but bump version in a commit by itself I can ignore when I pull)
-* Send me a pull request. Bonus points for topic branches.
+== well...
 
-== Copyright
+In theory. I got tied up with other projects, and this
+had to be put into a holding pattern for the indefinite
+future.
 
-Copyright (c) 2010 Brent Sanders. See LICENSE for details.
+It *SHOULD* a lot of the hard stuff done, and at last I
+worked on it it *was* sending MIDI successfully. Making a set of
+loop sequencers and other features, that ran by handing it off
+to the realtime thread was next.
+that I haven't gotten to that.
+
+[note: you have to run a patched kernel to actually take
+advantage of sub-milisecond sleeps. Which anybody should
+who is interested in dealing with audio in linux has probably
+already done...]
+
+= <strike>Copyright</strike>,hmmmm....<
+
+This used to have a standard free-licence like most gems,
+but really, anybody brave enough to actually get anything
+deservers to be able to do whatever they want. So as the
+sole author, and i'm just going to put it fully into
+the Public Domain. No retained copyright whatsoever.
+
+= ...
+
+It was such a fun piece of code, too. Maybe I'll find time
+to come back to it in the future... hmm.....
+
+.
+.
+.
+
+<tt>
+    ^X^S
+    git add -A
+    git commit -m 'final checkin; so long and thanks for all the fish'
+    git push
+    cd ..
+    mv alsa_midi.git defunct/
+    ^D
+</tt>
+
